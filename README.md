@@ -76,8 +76,6 @@ $^{*}$ Corresponding author at: School of ICT, Metropolia University of Applied 
 
 discretus is a comprehensive software library that implements the core theory and algorithms of discrete mathematics for the Python programming language. It serves learners who need transparent building blocks, educators who need dependable primitives for coursework and automated assessment, and practitioners who need fast, correct, and composable routines inside real systems. The library spans seven foundational domains, namely set theory, mathematical logic, combinatorics, graph theory, number theory, recurrence relations, and abstract algebra, and exposes all of them through a single coherent application programming interface.
 
-This document uses full LaTeX notation. On GitHub the equations below render through the built in math support, and in any LaTeX aware Markdown viewer they render as typeset mathematics. Inline mathematics is written between single dollar signs, for example $a \in A$, and display mathematics is written between double dollar signs.
-
 ## Mathematical Scope
 
 discretus formalizes and computes the following representative results. Each domain section later in this document restates these with runnable code.
