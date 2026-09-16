@@ -374,6 +374,7 @@ check_prose() {
     FORBIDDEN_CODE_POINTS="${FORBIDDEN_CODE_POINTS}" "${PYTHON}" - <<'PY'
 import os
 import pathlib
+import subprocess
 import sys
 import unicodedata
 
@@ -393,14 +394,36 @@ forbidden = {
     for point in os.environ["FORBIDDEN_CODE_POINTS"].split(",")
 }
 
+def tracked_files():
+    """Yield the files git tracks, or every file when git is unavailable.
+
+    Only committed files are checked. A generated tree such as a coverage
+    report or a built environment is ignored by git and is not the
+    repository's prose, so checking it would report a failure that no edit
+    of the repository could fix.
+    """
+    try:
+        output = subprocess.run(
+            ["git", "ls-files", "-z"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return [
+            path
+            for path in sorted(pathlib.Path(".").rglob("*"))
+            if path.is_file()
+        ]
+    return [
+        pathlib.Path(name)
+        for name in output.split("\0")
+        if name and pathlib.Path(name).is_file()
+    ]
+
+
 failures = []
-for path in sorted(pathlib.Path(".").rglob("*")):
-    if not path.is_file():
-        continue
-    if ".git" in path.parts or "_build" in path.parts:
-        continue
-    if "__pycache__" in path.parts or ".asv" in path.parts:
-        continue
+for path in tracked_files():
     if path.name in SKIP_FILES:
         continue
     if path.suffix not in SUFFIXES and path.name not in EXTRA_NAMES:
@@ -430,18 +453,47 @@ check_notice() {
     # placeholders for packages that are not written yet.
     "${PYTHON}" - <<'PY'
 import pathlib
+import subprocess
 import sys
 
 NOTICE = "mozilla.org/MPL/2.0"
+
+def tracked_files():
+    """Yield the files git tracks, or every file when git is unavailable.
+
+    Only committed files are checked. A generated tree such as a coverage
+    report or a built environment is ignored by git and is not the
+    repository's prose, so checking it would report a failure that no edit
+    of the repository could fix.
+    """
+    try:
+        output = subprocess.run(
+            ["git", "ls-files", "-z"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return [
+            path
+            for path in sorted(pathlib.Path(".").rglob("*"))
+            if path.is_file()
+        ]
+    return [
+        pathlib.Path(name)
+        for name in output.split("\0")
+        if name and pathlib.Path(name).is_file()
+    ]
+
+
 failures = []
-for pattern in ("*.py", "*.sh"):
-    for path in sorted(pathlib.Path(".").rglob(pattern)):
-        if ".git" in path.parts or "__pycache__" in path.parts:
-            continue
-        if path.stat().st_size == 0:
-            continue
-        if NOTICE not in path.read_text(encoding="utf-8")[:500]:
-            failures.append(str(path))
+for path in tracked_files():
+    if path.suffix not in {".py", ".sh"}:
+        continue
+    if path.stat().st_size == 0:
+        continue
+    if NOTICE not in path.read_text(encoding="utf-8")[:500]:
+        failures.append(str(path))
 
 if failures:
     print("missing the license notice:")
@@ -600,12 +652,40 @@ import configparser
 import json
 import pathlib
 import re
+import subprocess
 import sys
 
 try:
     import yaml
 except ImportError:
     yaml = None
+
+def tracked_files():
+    """Yield the files git tracks, or every file when git is unavailable.
+
+    Only committed files are checked. A generated tree such as a coverage
+    report or a built environment is ignored by git and is not the
+    repository's prose, so checking it would report a failure that no edit
+    of the repository could fix.
+    """
+    try:
+        output = subprocess.run(
+            ["git", "ls-files", "-z"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return [
+            path
+            for path in sorted(pathlib.Path(".").rglob("*"))
+            if path.is_file()
+        ]
+    return [
+        pathlib.Path(name)
+        for name in output.split("\0")
+        if name and pathlib.Path(name).is_file()
+    ]
 
 failures = []
 skipped = 0
@@ -622,9 +702,7 @@ def check(path, loader):
         failures.append(f"{path}: {type(error).__name__}: {error}")
 
 
-for path in sorted(pathlib.Path(".").rglob("*")):
-    if ".git" in path.parts or "_build" in path.parts or not path.is_file():
-        continue
+for path in tracked_files():
     if path.suffix in {".yml", ".yaml"}:
         if yaml is None:
             skipped += 1
