@@ -1,10 +1,14 @@
 # ShellCheck configuration for the maintenance scripts in scripts/.
 #
-# Five shell scripts live in scripts/: the test runner, the lint runner, the
-# documentation builder, the version bump wrapper, and the release driver.
-# They are short, but two of them can publish an artifact or move a tag, so
-# a silent failure in one of them is expensive. Static analysis is therefore
-# treated as part of the quality gate rather than as a nicety.
+# Four shell scripts live in scripts/: the quality gate, the test runner, the
+# documentation builder, and the release driver. The two remaining helpers in
+# that directory, the version bump and the stub generator, are Python and are
+# analysed by the Python linters instead.
+#
+# The four are not short, and the release driver can build an artifact and
+# move a tag, so a silent failure in one of them is expensive. Static
+# analysis is therefore treated as part of the quality gate rather than as a
+# nicety.
 #
 # Everyday use:
 #
@@ -65,26 +69,28 @@ enable=add-default-case,avoid-nullary-conditions,check-extra-masked-returns,chec
 # kept short on purpose: a long disable list is indistinguishable from not
 # running the linter at all.
 #
-#   SC1091
-#       The scripts source a virtual environment activation file that does
-#       not exist until the environment is created, so the linter cannot
-#       follow it and reports a missing source. The activation is guarded by
-#       a file existence test at runtime.
-#
 #   SC2312
 #       The release script reads command substitutions inside conditions on
 #       purpose, because a non zero status there is the signal it is
-#       testing for rather than an error to propagate.
-disable=SC1091,SC2312
+#       testing for rather than an error to propagate. The branch count of
+#       a comparison against the remote is read that way, for instance.
+#
+# Nothing else is silenced. In particular the missing source finding is not,
+# because no script here sources anything: the release driver runs the
+# interpreter of a throwaway environment by its path rather than activating
+# the environment, which avoids both the finding and the class of defect it
+# warns about.
+disable=SC2312
 
 # Do not follow `source` into files outside the repository, so that the
 # analysis depends only on what is committed here and produces the same
 # result on a laptop, in a container, and in continuous integration.
 external-sources=false
 
-# Where to look for sourced files that do live in the repository. The
-# scripts share a small preamble, and this path lets the linter resolve it
-# without an absolute reference that would break outside the container.
+# Where to look for a sourced file that does live in the repository. No
+# script sources another today, so this is precautionary: it is what makes a
+# later shared preamble resolvable without an absolute reference that would
+# break outside the container.
 source-path=SCRIPTDIR
 source-path=SCRIPTDIR/..
 source-path=SCRIPTDIR/../scripts
