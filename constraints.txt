@@ -4,6 +4,6 @@
 black<25
 isort<6
 mypy<2
-pytest<9
+pytest<10
 ruff<1
 sphinx<9
