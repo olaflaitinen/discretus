@@ -1,23 +1,186 @@
-# Default owner for everything in the repository.
-*                       @olaflaitinen
+# Code owners for discretus.
+#
+# The forge reads this file to decide who is requested for review when a pull
+# request touches a path. The last matching pattern wins, so the general
+# patterns come first and the specific ones come after, which is the opposite
+# of how a reader might expect a configuration file to be ordered.
+#
+# What this file does and does not do:
+#
+#   It requests a review automatically. It does not block a merge on its own;
+#   that is a branch protection setting.
+#   It names an owner per path. It does not assign the work, and an owner who
+#   is requested may reassign or decline.
+#   It applies to the default branch. A change to this file takes effect for
+#   pull requests opened after it merges.
+#
+# Syntax notes, because the pattern language is not quite the one used by
+# .gitignore:
+#
+#   A pattern without a slash matches at any depth, so `*.py` matches every
+#   Python file in the repository.
+#   A pattern ending in a slash matches a directory and everything under it.
+#   A leading slash anchors the pattern at the repository root.
+#   A line with a path and no owner removes ownership for that path, which is
+#   how an exception to a broader rule is expressed.
+#
+# The project currently has one maintainer, so every rule below names the same
+# person. The file is nonetheless written with the structure it will need when
+# there are domain reviewers, because the alternative is a single wildcard
+# line that has to be rewritten from scratch the first time somebody else
+# reviews. AUTHORS.md lists the roles that are open, and a contributor who
+# reviews well within one domain over several pull requests will be invited to
+# hold the corresponding role, at which point their entry is added here.
 
-# Domain packages.
-/discretus/core/        @olaflaitinen
-/discretus/sets/        @olaflaitinen
-/discretus/logic/       @olaflaitinen
-/discretus/combinatorics/ @olaflaitinen
-/discretus/graphs/      @olaflaitinen
-/discretus/number_theory/ @olaflaitinen
-/discretus/recurrences/ @olaflaitinen
-/discretus/algebra/     @olaflaitinen
+# ---------------------------------------------------------------------------
+# Default owner
+# ---------------------------------------------------------------------------
+# Everything not matched by a later rule.
+*                                   @olaflaitinen
 
-# Cross cutting services.
-/discretus/viz/         @olaflaitinen
-/discretus/io/          @olaflaitinen
-/discretus/utils/       @olaflaitinen
+# ---------------------------------------------------------------------------
+# The core layer
+# ---------------------------------------------------------------------------
+# A change here affects every domain package, because the core defines what an
+# element is, what a relation and a function are, how exact arithmetic
+# behaves, and how a structure verifies its axioms. It is reviewed more
+# strictly than a change confined to one domain, and it is the one area where
+# a second opinion will be sought first once a second reviewer exists.
+/discretus/core/                    @olaflaitinen
+/discretus/exceptions.py            @olaflaitinen
+/discretus/errors.py                @olaflaitinen
+/discretus/typing.py                @olaflaitinen
+/discretus/protocols.py             @olaflaitinen
+/discretus/config.py                @olaflaitinen
+/discretus/constants.py             @olaflaitinen
+/discretus/validation.py            @olaflaitinen
+/discretus/registry.py              @olaflaitinen
+/discretus/logging_utils.py         @olaflaitinen
+/discretus/__init__.py              @olaflaitinen
+/discretus/__about__.py             @olaflaitinen
+/discretus/_version.py              @olaflaitinen
 
-# Infrastructure, documentation, and release tooling.
-/.github/               @olaflaitinen
-/docs/                  @olaflaitinen
-/scripts/               @olaflaitinen
-/benchmarks/            @olaflaitinen
+# ---------------------------------------------------------------------------
+# Domain packages
+# ---------------------------------------------------------------------------
+# One rule per domain, so that a future domain reviewer can be added on a
+# single line without touching anything else. The mathematics of each domain
+# is what a reviewer here is being asked about.
+/discretus/sets/                    @olaflaitinen
+/discretus/logic/                   @olaflaitinen
+/discretus/combinatorics/           @olaflaitinen
+/discretus/graphs/                  @olaflaitinen
+/discretus/number_theory/           @olaflaitinen
+/discretus/recurrences/             @olaflaitinen
+/discretus/algebra/                 @olaflaitinen
+
+# The cryptographic primitives are teaching implementations, and a change
+# there is reviewed with the documented limitations in mind: no hardening
+# claim may be added, and no primitive may be presented as production ready.
+# The security policy states the scope.
+/discretus/number_theory/crypto/    @olaflaitinen
+
+# ---------------------------------------------------------------------------
+# Cross cutting service packages
+# ---------------------------------------------------------------------------
+# These depend on the domains they serve rather than the other way around.
+/discretus/viz/                     @olaflaitinen
+/discretus/io/                      @olaflaitinen
+/discretus/utils/                   @olaflaitinen
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+# The suite mirrors the package layout, so a test file usually accompanies a
+# change to the module it tests and is reviewed with it.
+/tests/                             @olaflaitinen
+
+# ---------------------------------------------------------------------------
+# Documentation
+# ---------------------------------------------------------------------------
+# The reference pages, the tutorials, and the top level pages. A change to the
+# documented behaviour of a routine belongs with the code change rather than
+# in a separate pull request.
+/docs/                              @olaflaitinen
+/README.md                          @olaflaitinen
+/CHANGELOG.md                       @olaflaitinen
+/CONTRIBUTING.md                    @olaflaitinen
+/AUTHORS.md                         @olaflaitinen
+
+# ---------------------------------------------------------------------------
+# Policy and legal
+# ---------------------------------------------------------------------------
+# These change rarely and never as a side effect of another change. A pull
+# request that edits one of them alongside code will be asked to split.
+/LICENSE                            @olaflaitinen
+/NOTICE                             @olaflaitinen
+/SECURITY.md                        @olaflaitinen
+/CODE_OF_CONDUCT.md                 @olaflaitinen
+/CITATION.cff                       @olaflaitinen
+/codemeta.json                      @olaflaitinen
+/.zenodo.json                       @olaflaitinen
+
+# ---------------------------------------------------------------------------
+# Build, packaging, and release
+# ---------------------------------------------------------------------------
+# The declared dependencies, the supported interpreter range, and the release
+# path. A change here can affect every user of the published package without
+# changing a line of library code, which is why it is listed separately.
+/pyproject.toml                     @olaflaitinen
+/setup.py                           @olaflaitinen
+/setup.cfg                          @olaflaitinen
+/MANIFEST.in                        @olaflaitinen
+/requirements.txt                   @olaflaitinen
+/requirements-dev.txt               @olaflaitinen
+/requirements-docs.txt              @olaflaitinen
+/constraints.txt                    @olaflaitinen
+/environment.yml                    @olaflaitinen
+/versioneer.py                      @olaflaitinen
+/.bumpversion.cfg                   @olaflaitinen
+/Dockerfile                         @olaflaitinen
+/docker-compose.yml                 @olaflaitinen
+
+# ---------------------------------------------------------------------------
+# Repository automation
+# ---------------------------------------------------------------------------
+# The workflows can publish an artifact and move a tag, so they are the most
+# security relevant configuration in the repository. A change that widens a
+# permission block or adds a trigger is reviewed for that specifically.
+/.github/                           @olaflaitinen
+/.github/workflows/                 @olaflaitinen
+/.github/workflows/release.yml      @olaflaitinen
+/.github/dependabot.yml             @olaflaitinen
+
+# ---------------------------------------------------------------------------
+# Quality gate configuration
+# ---------------------------------------------------------------------------
+# Changing a linter configuration changes what the gate accepts for every
+# future pull request, which is why CONTRIBUTING.md asks for it to be a
+# separate pull request rather than part of a change that it would unblock.
+/.pre-commit-config.yaml            @olaflaitinen
+/.pylintrc                          @olaflaitinen
+/.flake8                            @olaflaitinen
+/.isort.cfg                         @olaflaitinen
+/mypy.ini                           @olaflaitinen
+/pytest.ini                         @olaflaitinen
+/.coveragerc                        @olaflaitinen
+/codecov.yml                        @olaflaitinen
+/.bandit                            @olaflaitinen
+/.yamllint.yml                      @olaflaitinen
+/.markdownlint.jsonc                @olaflaitinen
+/.codespellrc                       @olaflaitinen
+/.shellcheckrc                      @olaflaitinen
+/.hadolint.yaml                     @olaflaitinen
+/tox.ini                            @olaflaitinen
+/noxfile.py                         @olaflaitinen
+/Makefile                           @olaflaitinen
+
+# ---------------------------------------------------------------------------
+# Scripts and benchmarks
+# ---------------------------------------------------------------------------
+# The release script can publish, so it is grouped with the automation in
+# terms of review attention even though it lives elsewhere.
+/scripts/                           @olaflaitinen
+/scripts/release.sh                 @olaflaitinen
+/benchmarks/                        @olaflaitinen
+/examples/                          @olaflaitinen
