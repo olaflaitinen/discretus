@@ -446,10 +446,12 @@ jobs:
                   continue
               if path.suffix in {".yml", ".yaml"}:
                   check(path, yaml.safe_load)
+              elif path.suffix == ".jsonc" or path.name == "asv.conf.json":
+                  # Both formats permit line comments. The benchmark tool
+                  # strips them before parsing, so this check does the same.
+                  check(path, lambda text: json.loads(re.sub(r"^\s*//.*$", "", text, flags=re.M)))
               elif path.suffix == ".json":
                   check(path, json.loads)
-              elif path.suffix == ".jsonc":
-                  check(path, lambda text: json.loads(re.sub(r"^\s*//.*$", "", text, flags=re.M)))
               elif path.suffix in {".cfg", ".ini"} or path.name in {".codespellrc", ".bumpversion.cfg"}:
                   check(path, lambda text: configparser.RawConfigParser().read_string(text))
 

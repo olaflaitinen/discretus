@@ -1,0 +1,222 @@
+// Configuration for airspeed velocity, the historical benchmarking tool.
+//
+// This file is the counterpart to the harness in benchmarks/__init__.py, and
+// the two answer different questions. The harness measures the working tree
+// now, which is what a contributor investigating a routine and the
+// continuous integration pipeline both want. This configuration measures the
+// history: it checks out a range of commits, builds each one in its own
+// environment, runs the suite against every one, and produces a browsable
+// record of how the library's performance moved over time.
+//
+// Use the harness for a question about the present:
+//
+//     python -m benchmarks --group graphs --filter dijkstra
+//
+// Use this configuration for a question about the past:
+//
+//     asv run ALL --config benchmarks/asv.conf.json
+//     asv run v1.0.0..main --config benchmarks/asv.conf.json
+//     asv continuous main HEAD --config benchmarks/asv.conf.json
+//     asv compare v1.0.0 main --config benchmarks/asv.conf.json
+//     asv publish && asv preview
+//
+// Note that airspeed velocity is an optional development dependency,
+// installed through the pip section of environment.yml rather than through
+// any extra of the library. Nothing in this file is required in order to
+// use discretus, and nothing in the library imports it.
+//
+// Comments are permitted here because airspeed velocity strips them before
+// parsing, which is the format its own generated template uses. The
+// configuration linting job in the lint workflow strips them in the same way
+// before validating this file.
+{
+    // The version of the configuration format. One is current.
+    "version": 1,
+
+    // The project name, which becomes the title of the published report.
+    "project": "discretus",
+
+    // Where a reader of the report is sent for the project itself.
+    "project_url": "https://github.com/olaflaitinen/discretus",
+
+    // The repository to measure. The path is relative to this file, so the
+    // two levels up reach the repository root. An absolute path or a remote
+    // address also works, and the relative form is used here so that a
+    // clone measures itself rather than whatever is on a maintainer's disk.
+    "repo": "../",
+
+    // The importable package lives at the repository root rather than in a
+    // source subdirectory, so this stays empty.
+    "repo_subdir": "",
+
+    // The branches to consider when a commit range is not given. Only the
+    // default branch is measured by default, because a feature branch is
+    // measured through the continuous command against its base instead.
+    "branches": ["main"],
+
+    // The version control system. Naming it explicitly saves a probe.
+    "dvcs": "git",
+
+    // How the environments are created. The virtualenv backend is used
+    // rather than conda, because the library has no compiled parts and no
+    // system dependencies, so the lighter backend is sufficient and is far
+    // faster to create. A contributor who prefers conda can override this
+    // on the command line with the environment type option.
+    "environment_type": "virtualenv",
+
+    // Seconds allowed for an installation. The default is a minute, which is
+    // generous for a package with no dependencies and tight for a first run
+    // that has to download the interpreter's own build tooling.
+    "install_timeout": 600,
+
+    // How a commit hash in the report links back to the forge.
+    "show_commit_url": "https://github.com/olaflaitinen/discretus/commit/",
+
+    // The interpreter versions to measure. The oldest and the newest
+    // supported versions are both listed, because the library's performance
+    // profile differs between them: the newer interpreters have faster
+    // attribute access and a faster call sequence, which matters for a pure
+    // Python library whose hot paths are interpreter bound loops.
+    //
+    // PyPy is deliberately absent here. It is measured by the interpreters
+    // job of the benchmark workflow instead, because a historical record
+    // that mixes implementations is harder to read than two separate
+    // records, and because the just in time compiler makes the warm up
+    // behaviour different enough to deserve its own treatment.
+    "pythons": ["3.9", "3.12"],
+
+    // The dependency matrix. The library requires nothing at runtime, which
+    // is the whole point of the design, so the only entries are the
+    // optional visualization backends and they are measured in one
+    // configuration rather than across versions.
+    //
+    // An empty string as a version means the dependency is absent in that
+    // configuration, which is how the no extras configuration is expressed.
+    "matrix": {
+        "req": {
+            "matplotlib": ["", "3.8"],
+            "graphviz": [""]
+        },
+        "env": {
+            // A fixed hash seed removes one source of run to run variation
+            // in anything that touches a dictionary or a set. The library
+            // sorts its output through a total order so that results do not
+            // depend on hash values, and fixing the seed removes the
+            // remaining variation in the measurement itself.
+            "PYTHONHASHSEED": ["0"],
+            // The library reads its configuration from the environment.
+            // Fixing the seed here makes every randomized routine
+            // reproducible across the whole historical run, which is what
+            // makes two commits comparable at all.
+            "DISCRETUS_DEFAULT_SEED": ["20260115"],
+            // Strict validation is left on, because it is the default a user
+            // gets and therefore the configuration worth measuring.
+            "DISCRETUS_STRICT_VALIDATION": ["true"]
+        },
+        "env_nobuild": {}
+    },
+
+    // Combinations to leave out of the matrix. The visualization backends
+    // are not measured on the oldest interpreter, because the historical
+    // record of the rendering code is less interesting than the record of
+    // the computational core and the extra configurations double the
+    // runtime of a full historical run.
+    "exclude": [
+        {
+            "python": "3.9",
+            "req": {"matplotlib": "3.8"}
+        }
+    ],
+
+    // Combinations to add that the matrix would not generate. None are
+    // needed at present; the entry is kept so that adding one later is a
+    // change to a value rather than a change to the structure.
+    "include": [],
+
+    // Where the benchmark modules live, relative to this file. The suite is
+    // this directory itself: airspeed velocity discovers the bench modules
+    // by name, and the harness in __init__.py discovers the same modules
+    // through its own list, so the two tools measure the same code.
+    "benchmark_dir": ".",
+
+    // Where the created environments are cached. Kept out of the repository
+    // by .gitignore, because an environment directory is large and is
+    // reproducible from this file.
+    "env_dir": "../.asv/env",
+
+    // Where the raw measurements are written. These are the files worth
+    // keeping: the published report is derived from them and can always be
+    // regenerated, while a lost measurement means re running the history.
+    "results_dir": "../.asv/results",
+
+    // Where the browsable report is generated.
+    "html_dir": "../.asv/html",
+
+    // Length of the commit hashes shown in the report. Eight is enough to be
+    // unambiguous in a repository of this size and short enough to read.
+    "hash_length": 8,
+
+    // Whether to cache the built package between commits. Enabled with a
+    // small cache, because building a pure Python package is cheap and the
+    // cache mostly saves the environment resolution rather than a
+    // compilation.
+    "build_cache_size": 4,
+
+    // The default time limit for a single benchmark, in seconds. The suite
+    // contains routines that are exponential by nature, namely exact graph
+    // colouring, Hamiltonicity, satisfiability, and exhaustive enumeration,
+    // and the sizes are chosen so that each finishes well inside this
+    // limit. A benchmark that exceeds it is reported as a failure rather
+    // than allowed to occupy a runner, which is the right outcome: it means
+    // either a regression or a size that was chosen too generously.
+    "default_benchmark_timeout": 120,
+
+    // Regression detection. The first entry applies to every benchmark and
+    // says that a change is only reported when it exceeds a factor of one
+    // and a half, which is well outside the resolution of a shared machine.
+    // A tighter threshold would fill the report with noise and train a
+    // reader to ignore it.
+    //
+    // The per benchmark entries below are tighter, and each is tighter for a
+    // reason: these are the routines whose asymptotic behaviour the
+    // reference makes a specific claim about, so a smaller change is worth
+    // investigating.
+    "regressions_thresholds": {
+        "": 0.5,
+        "bench_number_theory.modular_exponentiation": 0.2,
+        "bench_number_theory.sieve_eratosthenes": 0.2,
+        "bench_graphs.dijkstra_sparse": 0.2,
+        "bench_graphs.breadth_first_search": 0.2,
+        "bench_sets.union_integers": 0.2,
+        "bench_sets.transitive_closure": 0.2,
+        "bench_logic.tseitin_nested": 0.2,
+        "bench_algebra.core_matrix_power": 0.2
+    },
+
+    // Where regression detection starts. The first stable release is the
+    // baseline, because measurements from before it describe a library whose
+    // interface was still moving and are not comparable.
+    "regressions_first_commits": {
+        "": "v1.0.0"
+    },
+
+    // Plugins to load. None are needed: the suite uses the plain timing
+    // benchmarks that airspeed velocity provides, and the harness in
+    // __init__.py provides the reporting that a plugin would otherwise add.
+    "plugins": [],
+
+    // The commands used to build and install the package into each
+    // environment. They are stated explicitly rather than left to the
+    // default, because the default assumes a setup.py invocation and this
+    // project builds through pyproject.toml.
+    "build_command": [
+        "python -m pip install build",
+        "python -m build --wheel -o {build_cache_dir} {build_dir}"
+    ],
+    "install_command": [
+        "python -m pip install {wheel_file}"
+    ],
+    "uninstall_command": [
+        "return-code=any python -m pip uninstall -y discretus"
+    ]
+}
