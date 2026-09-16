@@ -480,7 +480,7 @@ jobs:
         # The configuration is in .hadolint.yaml, which restricts the
         # registries a base image may come from and requires the open
         # container labels.
-        uses: hadolint/hadolint-action@v3.1.0
+        uses: hadolint/hadolint-action@v3.5.0
         with:
           dockerfile: Dockerfile
           config: .hadolint.yaml
