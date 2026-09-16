@@ -12,6 +12,7 @@ only the terms that are actually requested.
 
 from __future__ import annotations
 
+import contextlib
 from typing import Any, Callable, Dict, Generic, Iterator, List, Optional, TypeVar
 
 from ..exceptions import DomainError
@@ -54,10 +55,11 @@ class cached_property(Generic[T]):  # noqa: N801
         if instance is None:
             return self
         value = self.function(instance)
-        try:
+        # An instance without a mutable attribute dictionary, one using
+        # slots for example, cannot cache the value. That is not an error:
+        # the property still works, it is simply recomputed each time.
+        with contextlib.suppress(AttributeError):
             instance.__dict__[self.name] = value
-        except AttributeError:
-            pass
         return value
 
 

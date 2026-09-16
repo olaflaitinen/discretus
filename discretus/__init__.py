@@ -65,19 +65,23 @@ from .exceptions import (
 )
 
 if TYPE_CHECKING:  # pragma: no cover
-    from . import (
-        algebra,
-        combinatorics,
-        core,
-        graphs,
-        io,
-        logic,
-        number_theory,
-        recurrences,
-        sets,
-        utils,
-        viz,
-    )
+    # Each name is imported under itself, which is the convention that marks
+    # an import as a deliberate re export rather than an unused one. Without
+    # it a linter reports eleven unused imports, and a type checker does not
+    # treat the names as part of this module's interface, which is the whole
+    # reason the block exists: the subpackages are loaded lazily at runtime,
+    # so this is the only place a checker can learn that they exist.
+    from . import algebra as algebra
+    from . import combinatorics as combinatorics
+    from . import core as core
+    from . import graphs as graphs
+    from . import io as io
+    from . import logic as logic
+    from . import number_theory as number_theory
+    from . import recurrences as recurrences
+    from . import sets as sets
+    from . import utils as utils
+    from . import viz as viz
 
 #: Subpackages that are imported on first attribute access.
 _LAZY_SUBMODULES = (

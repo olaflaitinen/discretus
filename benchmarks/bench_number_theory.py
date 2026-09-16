@@ -113,8 +113,7 @@ def random_of_bits(bits: int, label: str) -> int:
     the bit length is exactly what was asked for.
     """
     source = seeded(f"{label}.{bits}")
-    value = source.getrandbits(bits) | 1 | (1 << (bits - 1))
-    return value
+    return source.getrandbits(bits) | 1 | (1 << (bits - 1))
 
 
 def make_coprime_pair(bits: int) -> Tuple[int, int]:
