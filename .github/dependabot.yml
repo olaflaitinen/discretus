@@ -1,53 +1,221 @@
+# Automated dependency updates for discretus.
+#
+# The library itself has no runtime dependencies, so nothing here affects a
+# user of the published package. What it does affect is the development and
+# release toolchain, which is where a stale dependency actually causes harm:
+# a linter that no longer understands current syntax, a test runner with a
+# known defect, or an action pinned to a tag that was moved.
+#
+# Three ecosystems are watched, and each has a different risk profile.
+#
+#   pip        The development, documentation, and visualization stacks. A
+#              bad update here breaks the quality gate and is caught by the
+#              gate itself, so these updates are comparatively safe.
+#   actions    The workflow steps. These run with repository credentials and
+#              one of them can publish to the package index, so an update
+#              here is reviewed for what the new version does, not only for
+#              whether the pipeline stays green.
+#   docker     The container base image, which matters for the reproducible
+#              development and documentation environment.
+#
+# Policy for reviewing these pull requests, stated so that it is not decided
+# case by case:
+#
+#   A grouped patch or minor update whose pipeline is green is merged.
+#   A major update is read before merging, because a major version is where a
+#   linter changes its defaults and a test runner changes its collection
+#   behaviour.
+#   An update to an action in the release workflow is read line by line,
+#   including the diff of the action itself when it is not from a source the
+#   project already trusts.
+#   An update that would require a source change is closed with a note and
+#   reopened as an ordinary issue, so that the change is reviewed as a change
+#   rather than as an upgrade.
+#
+# The automated account is listed in .mailmap so that these commits do not
+# appear as a separate contributor in the release statistics.
+
 version: 2
 
 updates:
+  # -------------------------------------------------------------------------
+  # Python packages
+  # -------------------------------------------------------------------------
   - package-ecosystem: pip
     directory: "/"
     schedule:
       interval: weekly
       day: monday
+      time: "06:00"
+      timezone: "Europe/Helsinki"
+    # Five open pull requests is enough to keep the toolchain current without
+    # producing a queue that nobody reads. The groups below mean that one
+    # pull request usually covers several packages.
     open-pull-requests-limit: 5
     labels:
       - dependencies
+      - python
     commit-message:
+      # The repository uses Conventional Commits, and a dependency update is
+      # a build change rather than a feature or a fix.
       prefix: build
+      prefix-development: build
       include: scope
+    # Rebase rather than merge, so that the history stays linear and the
+    # pull request diff shows only the dependency change.
+    rebase-strategy: auto
+    versioning-strategy: increase-if-necessary
+    # Group related tools so that a single pull request updates the whole
+    # lint stack or the whole test stack. Reviewing them together is both
+    # faster and safer, because these tools interact: a formatter and a lint
+    # rule set can disagree, and finding that out in one pull request is
+    # better than in two.
     groups:
-      lint-and-type:
+      formatting-and-lint:
+        applies-to: version-updates
         patterns:
           - black
           - isort
           - ruff
           - pylint
+          - flake8
+        update-types:
+          - minor
+          - patch
+      typing-and-security:
+        applies-to: version-updates
+        patterns:
           - mypy
           - bandit
+          - pip-audit
+        update-types:
+          - minor
+          - patch
       testing:
+        applies-to: version-updates
         patterns:
-          - pytest*
+          - pytest
+          - pytest-*
           - hypothesis
+        update-types:
+          - minor
+          - patch
       documentation:
+        applies-to: version-updates
         patterns:
-          - sphinx*
+          - sphinx
+          - sphinx-*
           - myst-parser
           - furo
+        update-types:
+          - minor
+          - patch
+      task-runners:
+        applies-to: version-updates
+        patterns:
+          - nox
+          - tox
+          - pre-commit
+        update-types:
+          - minor
+          - patch
+      prose-and-config-linters:
+        applies-to: version-updates
+        patterns:
+          - codespell
+          - yamllint
+          - pymarkdownlnt
+        update-types:
+          - minor
+          - patch
+    ignore:
+      # The visualization backends are optional and their major versions
+      # change plotting defaults, which would change every rendered figure.
+      # A major update to either is taken deliberately rather than
+      # automatically, together with a review of the reference figures.
+      - dependency-name: "matplotlib"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "graphviz"
+        update-types: ["version-update:semver-major"]
+      # setuptools and wheel are pinned by the build backend requirement in
+      # pyproject.toml, and the floor there is what matters rather than the
+      # newest release.
+      - dependency-name: "setuptools"
+        update-types: ["version-update:semver-major"]
 
+  # -------------------------------------------------------------------------
+  # Workflow actions
+  # -------------------------------------------------------------------------
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
       interval: weekly
       day: monday
+      time: "06:00"
+      timezone: "Europe/Helsinki"
+    open-pull-requests-limit: 5
     labels:
       - dependencies
       - ci
     commit-message:
       prefix: ci
       include: scope
+    rebase-strategy: auto
+    groups:
+      # The steps that appear in almost every workflow. Updating them
+      # together keeps the six workflows from drifting to different
+      # versions of the same action, which is how a confusing failure
+      # appears in one workflow and not the others.
+      workflow-fundamentals:
+        applies-to: version-updates
+        patterns:
+          - actions/checkout
+          - actions/setup-python
+          - actions/cache
+          - actions/upload-artifact
+          - actions/download-artifact
+        update-types:
+          - minor
+          - patch
+      analysis-and-reporting:
+        applies-to: version-updates
+        patterns:
+          - github/codeql-action*
+          - codecov/codecov-action
+        update-types:
+          - minor
+          - patch
+    ignore:
+      # The publishing and release actions are updated by hand. They run with
+      # write permissions and one of them can push to the package index, so
+      # the new version is read before it is trusted, and a grouped
+      # automatic update would defeat that.
+      - dependency-name: "pypa/gh-action-pypi-publish"
+      - dependency-name: "softprops/action-gh-release"
 
+  # -------------------------------------------------------------------------
+  # Container base image
+  # -------------------------------------------------------------------------
   - package-ecosystem: docker
     directory: "/"
     schedule:
       interval: monthly
+      day: monday
+      time: "06:00"
+      timezone: "Europe/Helsinki"
+    open-pull-requests-limit: 2
     labels:
       - dependencies
+      - docker
     commit-message:
       prefix: build
+      include: scope
+    rebase-strategy: auto
+    ignore:
+      # The image pins the interpreter tag on purpose, and the first entry of
+      # .python-version decides which interpreter the documentation and the
+      # coverage report are produced with. Moving the base image to a newer
+      # interpreter is a decision about the project's default version, not a
+      # dependency update, so a major bump is proposed as an issue instead.
+      - dependency-name: "python"
+        update-types: ["version-update:semver-major"]
