@@ -1,0 +1,23 @@
+# Default owner for everything in the repository.
+*                       @olaflaitinen
+
+# Domain packages.
+/discretus/core/        @olaflaitinen
+/discretus/sets/        @olaflaitinen
+/discretus/logic/       @olaflaitinen
+/discretus/combinatorics/ @olaflaitinen
+/discretus/graphs/      @olaflaitinen
+/discretus/number_theory/ @olaflaitinen
+/discretus/recurrences/ @olaflaitinen
+/discretus/algebra/     @olaflaitinen
+
+# Cross cutting services.
+/discretus/viz/         @olaflaitinen
+/discretus/io/          @olaflaitinen
+/discretus/utils/       @olaflaitinen
+
+# Infrastructure, documentation, and release tooling.
+/.github/               @olaflaitinen
+/docs/                  @olaflaitinen
+/scripts/               @olaflaitinen
+/benchmarks/            @olaflaitinen

@@ -1,0 +1,12 @@
+blank_issues_enabled: false
+
+contact_links:
+  - name: Documentation
+    url: https://discretus.readthedocs.io
+    about: Read the API reference and the tutorials before filing an issue.
+  - name: Question or design discussion
+    url: https://github.com/olaflaitinen/discretus/discussions
+    about: Ask usage questions and propose designs before implementing them.
+  - name: Security report
+    url: https://github.com/olaflaitinen/discretus/blob/main/SECURITY.md
+    about: Report a vulnerability privately instead of opening an issue.
