@@ -284,7 +284,11 @@ def _print_listing(groups: Optional[Sequence[str]], pattern: Optional[str]) -> i
     for item in chosen:
         status = "available" if item.requires is not None else "unavailable"
         sizes = ", ".join(
-            "default" if size is None else f"{size:,}" if isinstance(size, int) else str(size)
+            (
+                "default"
+                if size is None
+                else f"{size:,}" if isinstance(size, int) else str(size)
+            )
             for size in item.sizes
         )
         print(item.qualified_name.ljust(width) + status.ljust(12) + sizes)
@@ -292,9 +296,7 @@ def _print_listing(groups: Optional[Sequence[str]], pattern: Optional[str]) -> i
             print(" " * width + f"            documented as {item.complexity}")
 
     available = sum(1 for item in chosen if item.requires is not None)
-    measurements = sum(
-        len(item.sizes) for item in chosen if item.requires is not None
-    )
+    measurements = sum(len(item.sizes) for item in chosen if item.requires is not None)
     print()
     print(
         f"{len(chosen)} benchmarks, {available} available, "
@@ -362,9 +364,7 @@ def _write_markdown(
                 direction = "slower" if ratio > 1 else "faster"
                 lines.append(f"| `{name}` | {size} | {ratio:.2f} | {direction} |")
         else:
-            lines.append(
-                f"No benchmark differs by a factor of {threshold:g} or more."
-            )
+            lines.append(f"No benchmark differs by a factor of {threshold:g} or more.")
         lines.append("")
 
     if measured:

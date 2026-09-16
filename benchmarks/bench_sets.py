@@ -198,12 +198,7 @@ def make_transitive_relation(size: int) -> Any:
 def make_equivalence_pairs(size: int) -> Any:
     """Return the pairs of an equivalence with blocks of size five."""
     assert relations_module is not None
-    pairs = {
-        (i, j)
-        for i in range(size)
-        for j in range(size)
-        if i // 5 == j // 5
-    }
+    pairs = {(i, j) for i in range(size) for j in range(size) if i // 5 == j // 5}
     return relations_module.Relation(domain=set(range(size)), pairs=pairs)
 
 
@@ -256,9 +251,7 @@ def make_union_find_plan(size: int) -> Tuple[Any, List[Tuple[int, int]]]:
     """
     assert equivalence_module is not None
     source = seeded("sets.union_find_plan")
-    plan = [
-        (source.randrange(size), source.randrange(size)) for _ in range(size * 2)
-    ]
+    plan = [(source.randrange(size), source.randrange(size)) for _ in range(size * 2)]
     return equivalence_module.UnionFind(range(size)), plan
 
 

@@ -58,14 +58,14 @@ from . import benchmark, random_pairs, require, requires_all, seeded
 # ---------------------------------------------------------------------------
 
 graphs_module = require("discretus.graphs", "Graph", "DiGraph", "BipartiteGraph")
-traversal_module = require("discretus.graphs.traversal", "bfs", "dfs", "connected_components")
+traversal_module = require(
+    "discretus.graphs.traversal", "bfs", "dfs", "connected_components"
+)
 shortest_path_module = require(
     "discretus.graphs.shortest_path", "dijkstra", "bellman_ford", "floyd_warshall"
 )
 spanning_module = require("discretus.graphs.spanning", "kruskal", "prim", "boruvka")
-flow_module = require(
-    "discretus.graphs.flow", "edmonds_karp", "dinic", "hopcroft_karp"
-)
+flow_module = require("discretus.graphs.flow", "edmonds_karp", "dinic", "hopcroft_karp")
 coloring_module = require(
     "discretus.graphs.coloring", "dsatur", "chromatic_number", "is_bipartite"
 )
@@ -177,7 +177,7 @@ def make_flow_network(vertices: int) -> Any:
     assert graphs_module is not None
     source_random = seeded(f"graphs.flow.{vertices}")
     graph = graphs_module.DiGraph()
-    layers = max(3, int(vertices ** 0.5))
+    layers = max(3, int(vertices**0.5))
     per_layer = max(2, vertices // layers)
     graph.add_vertex("source")
     graph.add_vertex("sink")

@@ -502,8 +502,7 @@ def random_words(
     source = seeded(label)
     alphabet = "abcdefghijklmnopqrstuvwxyz"
     return [
-        "".join(source.choice(alphabet) for _ in range(length))
-        for _ in range(count)
+        "".join(source.choice(alphabet) for _ in range(length)) for _ in range(count)
     ]
 
 
@@ -745,7 +744,8 @@ def format_growth(results: Sequence[BenchmarkResult]) -> str:
             else:
                 size_ratio = (
                     row.size / previous.size
-                    if isinstance(row.size, int) and isinstance(previous.size, int)
+                    if isinstance(row.size, int)
+                    and isinstance(previous.size, int)
                     and previous.size
                     else float("nan")
                 )

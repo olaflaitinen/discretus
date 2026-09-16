@@ -57,9 +57,7 @@ from . import benchmark, require, requires_all, seeded
 # The modules under measurement
 # ---------------------------------------------------------------------------
 
-gcd_module = require(
-    "discretus.number_theory.gcd", "gcd", "extended_gcd", "binary_gcd"
-)
+gcd_module = require("discretus.number_theory.gcd", "gcd", "extended_gcd", "binary_gcd")
 modular_module = require(
     "discretus.number_theory.modular", "mod_exp", "mod_inverse", "crt"
 )
@@ -86,7 +84,9 @@ crypto_module = require("discretus.number_theory.crypto", "rsa", "primitive_root
 core_modular_module = require(
     "discretus.core.modular_base", "extended_euclidean", "mod_power"
 )
-core_numeric_module = require("discretus.core.numeric", "integer_sqrt", "integer_nth_root")
+core_numeric_module = require(
+    "discretus.core.numeric", "integer_sqrt", "integer_nth_root"
+)
 core_bigint_module = require("discretus.core.bigint", "karatsuba_multiply")
 
 GROUP_GCD = "number_theory.gcd"

@@ -54,7 +54,7 @@ from __future__ import annotations
 from fractions import Fraction
 from typing import Any, List, Optional, Tuple
 
-from . import benchmark, require, requires_all, seeded
+from . import benchmark, require, seeded
 
 # ---------------------------------------------------------------------------
 # The modules under measurement
@@ -74,7 +74,9 @@ lattice_module = require("discretus.algebra.lattice", "BooleanAlgebra")
 #: The core layer is available before the algebra package is filled in, so
 #: the benchmarks that measure the shared machinery run today.
 core_operation_module = require("discretus.core.operation", "BinaryOperation")
-core_algebraic_module = require("discretus.core.algebraic_base", "GroupBase", "RingBase")
+core_algebraic_module = require(
+    "discretus.core.algebraic_base", "GroupBase", "RingBase"
+)
 core_matrix_module = require("discretus.core.matrix_base", "MatrixBase")
 core_polynomial_module = require("discretus.core.polynomial_base", "PolynomialBase")
 
