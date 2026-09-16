@@ -2,7 +2,7 @@
 
 **discretus is a rigorous, production-grade library for Discrete Mathematics in pure Python.**
 
-**Author:** Gustav Olaf Yunus Laitinen-Fredriksson Lundström-Imanov $^{\mathrm{a},*}$
+**Author:** Olaf Yunus Laitinen Imanov $^{\mathrm{a},*}$
 
 $^{\mathrm{a}}$ School of ICT, Metropolia University of Applied Sciences, Myllypurontie 1, 00920 Helsinki, Finland
 
@@ -566,7 +566,7 @@ If you use discretus in academic work, please cite it using the metadata in the 
 ```bibtex
 @software{discretus,
   title   = {discretus: A Discrete Mathematics library for Python},
-  author  = {Laitinen-Fredriksson Lundstrom-Imanov, Gustav Olaf Yunus},
+  author  = {Laitinen Imanov, Olaf Yunus},
   year    = {2026},
   version = {1.0.0},
   url     = {https://github.com/olaflaitinen/discretus}
@@ -583,7 +583,7 @@ discretus is released under the MIT License. This permissive license allows use,
 
 ## Author and Contact
 
-**Author:** Gustav Olaf Yunus Laitinen-Fredriksson Lundström-Imanov $^{\mathrm{a},*}$
+**Author:** Olaf Yunus Laitinen Imanov $^{\mathrm{a},*}$
 
 $^{\mathrm{a}}$ School of ICT, Metropolia University of Applied Sciences, Myllypurontie 1, 00920 Helsinki, Finland
 
