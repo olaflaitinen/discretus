@@ -3,7 +3,7 @@
 # because the runtime core has no third party dependencies.
 black<25
 isort<6
-mypy<2
+mypy<3
 pytest<9
 ruff<1
 sphinx<9
