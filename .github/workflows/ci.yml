@@ -1,43 +1,143 @@
+# Continuous integration for discretus.
+#
+# What this workflow is responsible for: proving that the library is correct
+# on every supported interpreter and platform, that it installs and imports
+# with no optional dependencies at all, that the command line interface
+# works, and that the distribution artifacts build and carry valid metadata.
+#
+# What it deliberately leaves to other workflows: formatting, lint, typing,
+# security analysis, and the prose conventions are in lint.yml; the
+# documentation build and the docstring examples are in docs.yml; the
+# performance measurements are in benchmarks.yml; the security query suite is
+# in codeql.yml; publishing is in release.yml.
+#
+# The division matters because a contributor should be able to read a red
+# pipeline and know immediately whether the change is wrong or merely
+# unformatted.
+#
+# Job overview:
+#
+#   test             The suite across five interpreters and three platforms.
+#   coverage         One reporting run, uploaded to the coverage service.
+#   import-check     Installs the package alone and imports it.
+#   cli              Exercises every documented command line invocation.
+#   minimum-versions Installs at the declared floors rather than the newest
+#                    compatible releases.
+#   package          Builds the source distribution and the wheel and checks
+#                    the metadata.
+#   install-matrix   Installs both artifacts in clean environments.
+#   summary          A single required check that aggregates the rest.
+
 name: CI
 
 on:
   push:
     branches: [main]
+    # Documentation only changes are covered by docs.yml, and running the
+    # full matrix for a typographic fix wastes an hour of runner time.
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/PULL_REQUEST_TEMPLATE.md"
   pull_request:
     branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/PULL_REQUEST_TEMPLATE.md"
+  # A manual run is useful after a runner image change, when a failure needs
+  # to be reproduced without pushing a commit.
   workflow_dispatch:
+  # A weekly run catches a break caused by something outside the repository,
+  # for instance a new interpreter patch release or a runner image update.
+  schedule:
+    - cron: "0 5 * * 1"
 
+# A new push to the same branch cancels the previous run, except on the
+# default branch, where every commit's result is worth keeping because it is
+# what a bisection reads.
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
+# The default is read only. No job in this workflow writes to the repository,
+# and the coverage upload authenticates through its own token.
 permissions:
   contents: read
 
+env:
+  # Keep the interpreter quiet and deterministic.
+  PYTHONDONTWRITEBYTECODE: "1"
+  PYTHONUNBUFFERED: "1"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  # Fail rather than hang when an index is slow.
+  PIP_DEFAULT_TIMEOUT: "60"
+  # Colour in the test output, which the forge renders.
+  FORCE_COLOR: "1"
+
 jobs:
+  # ---------------------------------------------------------------------------
+  # The test matrix
+  # ---------------------------------------------------------------------------
   test:
-    name: Test on ${{ matrix.os }} with Python ${{ matrix.python-version }}
+    name: Test ${{ matrix.python-version }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     strategy:
+      # Report every failure rather than stopping at the first one. A defect
+      # that appears on one interpreter and one platform is the interesting
+      # case, and cancelling the rest would hide which combinations are
+      # affected.
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        # The full grid is fifteen jobs. The exclusions below remove the
+        # combinations that add the least information, keeping the oldest and
+        # newest supported interpreter on every platform and the full range
+        # on Linux.
         exclude:
           - os: macos-latest
-            python-version: "3.9"
+            python-version: "3.10"
+          - os: macos-latest
+            python-version: "3.11"
           - os: windows-latest
             python-version: "3.10"
           - os: windows-latest
             python-version: "3.11"
-    steps:
-      - uses: actions/checkout@v4
+        include:
+          # PyPy on Linux, because the library is pure Python and the hot
+          # paths are interpreter bound loops over integers, so a defect
+          # that depends on CPython specific behaviour would appear here.
+          - os: ubuntu-latest
+            python-version: "pypy3.10"
 
-      - name: Set up Python
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+        with:
+          # The version helper reads the git description, so the history is
+          # needed rather than a shallow clone.
+          fetch-depth: 0
+
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
+          cache-dependency-path: |
+            pyproject.toml
+            requirements-dev.txt
+
+      - name: Report the environment
+        # Printed once per job so that a failure report can quote it rather
+        # than asking the reporter to reconstruct it.
+        run: |
+          python --version
+          python -c "import platform, sys; print(platform.platform()); print(sys.implementation.name)"
+          python -m pip --version
 
       - name: Install the package and the test stack
         run: |
@@ -45,19 +145,176 @@ jobs:
           python -m pip install -e .
           python -m pip install pytest pytest-cov hypothesis
 
-      - name: Run the test suite
-        run: python -m pytest --cov=discretus --cov-report=xml --cov-report=term-missing tests
+      - name: Confirm that the core has no third party requirements
+        # The promise that the computational core needs nothing beyond the
+        # standard library is checked rather than asserted. The metadata must
+        # declare only conditional requirements, each gated by an extra.
+        run: |
+          python - <<'PY'
+          import importlib.metadata as metadata
 
-      - name: Upload coverage
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+          requires = metadata.requires("discretus") or []
+          unconditional = [line for line in requires if "extra ==" not in line]
+          print("declared requirements:")
+          for line in requires:
+              print("  ", line)
+          assert not unconditional, f"unconditional requirements found: {unconditional}"
+          print("the core declares no unconditional third party requirement")
+          PY
+
+      - name: Run the test suite
+        run: python -m pytest tests -q --strict-markers --durations=10
+
+      - name: Run the property based tests with more examples
+        # The default example count keeps the ordinary run fast. One job per
+        # platform runs a deeper search, because the algebraic laws are where
+        # a rare counterexample matters most.
+        if: matrix.python-version == '3.12'
+        run: python -m pytest tests -q -m property --hypothesis-seed=0
+
+      - name: Run the slow tests
+        # Excluded from the ordinary run by the marker, included here so that
+        # they are never silently skipped forever.
+        if: matrix.python-version == '3.12' && matrix.os == 'ubuntu-latest'
+        run: python -m pytest tests -q -m slow
+
+  # ---------------------------------------------------------------------------
+  # Coverage
+  # ---------------------------------------------------------------------------
+  coverage:
+    name: Coverage report
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          # One reporting interpreter, matching the first entry of
+          # .python-version, so that the reported percentage is comparable
+          # between runs.
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[viz]"
+          python -m pip install pytest pytest-cov hypothesis
+
+      - name: Run the suite with coverage
+        # The visualization extra is installed here and only here, so that
+        # the rendering backends are measured rather than reported as
+        # uncovered. codecov.yml sets a lower target for that package anyway.
+        run: |
+          python -m pytest tests \
+            --cov=discretus \
+            --cov-branch \
+            --cov-report=xml \
+            --cov-report=term-missing:skip-covered
+
+      - name: Upload the coverage report
         uses: codecov/codecov-action@v4
         with:
           files: coverage.xml
+          flags: unit
+          # A failure to reach the coverage service must not fail the build.
+          # The report is information, and the gate is the test suite.
           fail_ci_if_error: false
+          verbose: true
 
+      - name: Store the report as an artifact
+        # Kept so that a coverage question can be answered without a re run,
+        # and so that the report survives an outage of the service.
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage.xml
+          retention-days: 14
+
+  # ---------------------------------------------------------------------------
+  # Installation without any extras
+  # ---------------------------------------------------------------------------
   import-check:
-    name: Import check without optional extras
+    name: Import with no extras
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install the package only
+        # No extras, no test stack, nothing else. This job is the reason a
+        # user can install the library into a restricted environment.
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install .
+
+      - name: Import the package and print the version
+        run: python -c "import discretus; print(discretus.__version__)"
+
+      - name: Import every subpackage
+        # The package imports its domains lazily, so importing the root does
+        # not prove that the domains import. This step does.
+        run: |
+          python - <<'PY'
+          import importlib
+
+          packages = [
+              "core", "sets", "logic", "combinatorics", "graphs",
+              "number_theory", "recurrences", "algebra", "viz", "io", "utils",
+          ]
+          for name in packages:
+              module = importlib.import_module(f"discretus.{name}")
+              print(f"imported discretus.{name}")
+          print("every subpackage imports without optional dependencies")
+          PY
+
+      - name: Confirm that no optional dependency was pulled in
+        run: |
+          python - <<'PY'
+          import sys
+
+          forbidden = {"matplotlib", "graphviz", "numpy", "scipy", "sympy", "networkx"}
+          import discretus
+          import discretus.viz
+          leaked = sorted(forbidden & set(sys.modules))
+          assert not leaked, f"importing the library pulled in {leaked}"
+          print("no optional dependency is imported at import time")
+          PY
+
+      - name: Confirm that a rendering backend reports its missing dependency
+        # A missing extra must produce an actionable error rather than an
+        # import failure at startup.
+        run: |
+          python - <<'PY'
+          from discretus.exceptions import OptionalDependencyError
+          from discretus.registry import VIZ_BACKENDS
+
+          print("backends visible without extras:", VIZ_BACKENDS.names())
+          assert "ascii" in VIZ_BACKENDS
+          assert "svg" in VIZ_BACKENDS
+          print("the dependency free backends are available")
+          PY
+
+  # ---------------------------------------------------------------------------
+  # Command line interface
+  # ---------------------------------------------------------------------------
+  cli:
+    name: Command line interface
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -71,36 +328,201 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install .
 
-      - name: Import the package and print the version
-        run: python -c "import discretus; print(discretus.__version__)"
-
-      - name: Exercise the command line interface
+      - name: Run every documented invocation
+        # These are the invocations the README and the reference show. If one
+        # of them changes, the documentation changes with it.
         run: |
+          python -m discretus --version
+          python -m discretus --help
           python -m discretus prime 2147483647
           python -m discretus factor 600851475143
           python -m discretus cnf "p -> (q -> r)"
 
-  package:
-    name: Build and verify the distribution
+      - name: Run the console script entry point
+        # Installed through the project scripts table, which is a separate
+        # code path from the runnable module.
+        run: |
+          discretus --version
+          discretus prime 97
+
+      - name: Check the exit status on bad input
+        # A command line tool that returns success on invalid input is
+        # unusable in a shell pipeline or a grading script.
+        run: |
+          set +e
+          python -m discretus prime not-a-number
+          status=$?
+          set -e
+          echo "exit status was ${status}"
+          test "${status}" -ne 0
+
+  # ---------------------------------------------------------------------------
+  # Minimum declared versions
+  # ---------------------------------------------------------------------------
+  minimum-versions:
+    name: Minimum declared versions
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          # The oldest supported interpreter, since the floors are declared
+          # against it.
+          python-version: "3.9"
+          cache: pip
+
+      - name: Install at the declared floors
+        # Installing the newest compatible release of every tool hides a
+        # declared floor that is wrong. This job installs exactly the floors,
+        # so that the metadata is tested rather than trusted.
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+          python -m pip install "pytest==7.4.0" "hypothesis==6.90.0"
+
+      - name: Run the suite
+        run: python -m pytest tests -q
+
+  # ---------------------------------------------------------------------------
+  # Distribution artifacts
+  # ---------------------------------------------------------------------------
+  package:
+    name: Build and check the distribution
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
 
-      - name: Build the distribution
+      - name: Build
         run: |
           python -m pip install --upgrade pip build twine
           python -m build
 
       - name: Check the metadata
-        run: python -m twine check dist/*
+        # Catches a malformed long description, which the package index would
+        # otherwise reject at publication time.
+        run: python -m twine check --strict dist/*
+
+      - name: List the contents of both artifacts
+        # A wheel that is missing the type marker, or a source distribution
+        # that is missing the license, is a packaging defect that the tests
+        # cannot see.
+        run: |
+          python -m pip install --upgrade check-wheel-contents
+          python -m zipfile --list dist/*.whl
+          python -m tarfile --list dist/*.tar.gz
+
+      - name: Confirm that the required files are present
+        run: |
+          python - <<'PY'
+          import glob
+          import tarfile
+          import zipfile
+
+          wheel = glob.glob("dist/*.whl")[0]
+          names = zipfile.ZipFile(wheel).namelist()
+          for required in ("discretus/py.typed", "discretus/__init__.py"):
+              assert any(name.endswith(required) for name in names), required
+          print("the wheel carries the type marker")
+
+          sdist = glob.glob("dist/*.tar.gz")[0]
+          members = tarfile.open(sdist).getnames()
+          for required in ("LICENSE", "NOTICE", "README.md", "CHANGELOG.md"):
+              assert any(name.endswith(required) for name in members), required
+          print("the source distribution carries the license and the notice")
+          PY
 
       - name: Upload the artifacts
         uses: actions/upload-artifact@v4
         with:
           name: distribution
           path: dist/
+          retention-days: 14
+
+  # ---------------------------------------------------------------------------
+  # Installing the built artifacts
+  # ---------------------------------------------------------------------------
+  install-matrix:
+    name: Install the ${{ matrix.artifact }} on ${{ matrix.os }}
+    needs: package
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        artifact: [wheel, sdist]
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download the artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: distribution
+          path: dist/
+
+      - name: Install the wheel
+        if: matrix.artifact == 'wheel'
+        shell: bash
+        run: python -m pip install dist/*.whl
+
+      - name: Install the source distribution
+        if: matrix.artifact == 'sdist'
+        shell: bash
+        run: python -m pip install dist/*.tar.gz
+
+      - name: Import from a directory that is not the checkout
+        # Importing from the repository root would import the source tree
+        # rather than the installed package, which is the classic way a
+        # packaging defect escapes detection.
+        shell: bash
+        run: |
+          cd "${HOME}"
+          python -c "import discretus; print(discretus.__version__, discretus.__file__)"
+
+  # ---------------------------------------------------------------------------
+  # Aggregate status
+  # ---------------------------------------------------------------------------
+  summary:
+    name: CI summary
+    # One job to require in the branch protection settings, so that adding a
+    # matrix entry does not require editing those settings.
+    needs:
+      - test
+      - coverage
+      - import-check
+      - cli
+      - minimum-versions
+      - package
+      - install-matrix
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Report the result of every job
+        run: |
+          echo "test:             ${{ needs.test.result }}"
+          echo "coverage:         ${{ needs.coverage.result }}"
+          echo "import-check:     ${{ needs.import-check.result }}"
+          echo "cli:              ${{ needs.cli.result }}"
+          echo "minimum-versions: ${{ needs.minimum-versions.result }}"
+          echo "package:          ${{ needs.package.result }}"
+          echo "install-matrix:   ${{ needs.install-matrix.result }}"
+
+      - name: Fail when any job did not succeed
+        if: >-
+          contains(needs.*.result, 'failure') ||
+          contains(needs.*.result, 'cancelled') ||
+          contains(needs.*.result, 'skipped')
+        run: exit 1
