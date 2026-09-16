@@ -124,16 +124,41 @@ flag the target does not pass.
 | Command | Effect |
 | --- | --- |
 | `make test` | Run the test suite |
+| `make test-all` | Run every test stage the pipeline runs |
 | `make test-cov` | Run the suite with coverage and a missing line report |
 | `make lint` | Check formatting and static lint rules without changing files |
+| `make gate` | Run every check the pipeline runs, in its order |
 | `make format` | Apply black and isort in place |
 | `make type` | Run mypy over the library |
 | `make security` | Run bandit over the library |
 | `make docs` | Build the HTML documentation |
+| `make docs-strict` | Build it with warnings treated as errors |
+| `make stubs` | Generate type stubs and audit the annotations |
 | `make bench` | Run the benchmark suite |
 | `make build` | Build the source distribution and the wheel |
 | `make clean` | Remove build artifacts and tool caches |
 | `make precommit` | Run every pre-commit hook over every file |
+
+### The scripts behind the targets
+
+Each of the composite targets above is one script, and every script takes
+options that the target does not pass. Run any of them with `--help` for the
+full list. They are the same scripts the pipeline runs, so a check that
+passes here passes there.
+
+| Script | What it is for |
+| --- | --- |
+| `scripts/lint.sh` | Fifteen checks, cheapest first: the formatter, three linters, the type checker, the security scanner, the docstring examples, and six checks of the repository's own conventions. `--fix` applies what can be applied, `--fast` leaves out the slow three, and `--only` and `--skip` select by name. |
+| `scripts/run_tests.sh` | Six test stages: the suite, the docstring examples, the property based tests with the seed pinned, the tests marked slow, the ones needing an optional dependency, and the measured run against the coverage floor. `--matrix` repeats the selection on every installed interpreter. |
+| `scripts/build_docs.sh` | The documentation stages: the plain build, the strict build, the page inventory, the documentation examples, the reference coverage, the link check, and the printable form. `--serve` serves the result locally. |
+| `scripts/bump_version.py` | Raises the version in every file that declares it, rewrites the version tuple, and moves the changelog section. `--dry-run` prints the plan. It never pushes. |
+| `scripts/generate_stubs.py` | Generates type stubs from the source for tooling that cannot read inline annotations, and reports any public signature whose annotations are incomplete. `--check` audits without writing. |
+| `scripts/release.sh` | Everything that has to pass before a release tag is pushed, in the order the release workflow uses. It never publishes: publishing happens in the workflow, on a pushed tag, through trusted publishing. |
+
+The convention checks of the first script also run as pre-commit hooks, so a
+long dash, a missing license notice, a version that disagrees between two
+files, an undocumented public name, and a configuration file that does not
+parse are all caught before a commit is recorded rather than in the pipeline.
 
 Two task runners manage the interpreter matrix. Use either.
 
