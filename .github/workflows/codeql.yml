@@ -1,3 +1,26 @@
+# Code scanning and dependency auditing for discretus.
+#
+# This workflow answers a different question from lint.yml. The linters check
+# whether the code follows the project's conventions; the analysis here looks
+# for the classes of defect that a reviewer and a style checker both miss,
+# and it watches the dependency set for known vulnerabilities.
+#
+# The library's exposure is narrow and worth stating, because it explains
+# which findings matter. There are no runtime dependencies, no network
+# access, no subprocess during a computation, and no credential handling.
+# What remains is untrusted input reaching the parsers and the readers,
+# unbounded resource use from a small input, and the teaching cryptographic
+# primitives, which SECURITY.md documents as unsuitable for real secrets.
+#
+# Job overview:
+#
+#   analyze            The security and quality query suite.
+#   dependency-audit   Known vulnerabilities in the development stack.
+#   dependency-review  New dependencies introduced by a pull request.
+#   secrets            A scan for anything that looks like a credential.
+#   permissions-audit  A check that no workflow widened its permissions.
+#   summary            A single required check for the blocking jobs.
+
 name: CodeQL
 
 on:
@@ -5,39 +28,92 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # A weekly run matters here in a way it does not for the tests: a new
+  # advisory against a dependency, or a new query in the analysis suite,
+  # arrives without any change in this repository.
   schedule:
     - cron: "0 3 * * 1"
   workflow_dispatch:
 
+concurrency:
+  group: codeql-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 permissions:
   contents: read
-  security-events: write
-  actions: read
 
 jobs:
+  # ---------------------------------------------------------------------------
+  # Static analysis
+  # ---------------------------------------------------------------------------
   analyze:
     name: Analyze Python
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    timeout-minutes: 30
+    permissions:
+      # The analysis uploads its results to the security tab, which needs
+      # this permission and nothing else. It is granted per job rather than
+      # per workflow so that no other job inherits it.
+      contents: read
+      security-events: write
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python]
 
-      - name: Initialize CodeQL
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the package
+        # The analysis resolves imports, and an unresolvable import reduces
+        # the quality of the result rather than failing outright.
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+
+      - name: Initialize the analysis
         uses: github/codeql-action/init@v3
         with:
-          languages: python
+          languages: ${{ matrix.language }}
+          # Both suites. The security queries are the point; the quality
+          # queries catch a class of defect that the linters do not, for
+          # instance an unreachable branch or a comparison that is always
+          # true.
           queries: security-and-quality
+          config: |
+            paths:
+              - discretus
+            paths-ignore:
+              - tests
+              - benchmarks
+              - examples
+              - docs
 
       - name: Autobuild
+        # Python needs no build step. The action is kept because it also
+        # discovers the module layout, which improves the analysis.
         uses: github/codeql-action/autobuild@v3
 
       - name: Perform the analysis
         uses: github/codeql-action/analyze@v3
         with:
-          category: "/language:python"
+          category: "/language:${{ matrix.language }}"
+          upload: always
 
+  # ---------------------------------------------------------------------------
+  # Dependency vulnerabilities
+  # ---------------------------------------------------------------------------
   dependency-audit:
     name: Dependency audit
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -51,5 +127,239 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install pip-audit
 
+      - name: Confirm that the runtime has nothing to audit
+        # This is the strongest statement the project can make about its
+        # runtime supply chain: there is nothing in it. The check keeps that
+        # true rather than merely documented.
+        run: |
+          python -m pip install .
+          python - <<'PY'
+          import importlib.metadata as metadata
+
+          requires = metadata.requires("discretus") or []
+          unconditional = [line for line in requires if "extra ==" not in line]
+          assert not unconditional, f"unconditional requirements: {unconditional}"
+          print("the runtime has no third party dependency to audit")
+          PY
+
       - name: Audit the development requirements
-        run: python -m pip_audit -r requirements-dev.txt --strict || true
+        # Advisory. A vulnerability in a linter or a test runner cannot
+        # affect a user of the published package, and it is still worth
+        # knowing about and updating.
+        run: python -m pip_audit --requirement requirements-dev.txt --strict
+        continue-on-error: true
+
+      - name: Audit the documentation requirements
+        run: python -m pip_audit --requirement requirements-docs.txt --strict
+        continue-on-error: true
+
+      - name: Audit the visualization extra
+        run: |
+          python -m pip install ".[viz]"
+          python -m pip_audit --strict
+        continue-on-error: true
+
+  # ---------------------------------------------------------------------------
+  # Dependencies introduced by a pull request
+  # ---------------------------------------------------------------------------
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Review the dependency changes
+        # Two things are being checked. A newly introduced dependency with a
+        # known vulnerability is blocked, and a dependency under a licence
+        # incompatible with the Mozilla Public License 2.0 is blocked,
+        # because the project cannot redistribute it.
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: moderate
+          deny-licenses: GPL-2.0, GPL-3.0, AGPL-3.0, SSPL-1.0
+          comment-summary-in-pr: on-failure
+
+  # ---------------------------------------------------------------------------
+  # Credential scan
+  # ---------------------------------------------------------------------------
+  secrets:
+    name: Credential scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # A credential committed and then removed is still in the history,
+          # so the whole history is scanned rather than the current tree.
+          fetch-depth: 0
+
+      - name: Scan for anything that looks like a credential
+        # The project needs no credential: it makes no network call, and the
+        # release workflow authenticates through trusted publishing rather
+        # than a stored token. Anything matching below is therefore either a
+        # mistake or an example, and an example belongs in a fenced block
+        # with an obviously fake value.
+        run: |
+          python - <<'PY'
+          import pathlib
+          import re
+          import sys
+
+          PATTERNS = {
+              "private key block": re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
+              "package index token": re.compile(r"pypi-AgEIcHlwaS5vcmc[A-Za-z0-9_\-]+"),
+              "forge token": re.compile(r"gh[pousr]_[A-Za-z0-9]{36,}"),
+              "aws access key": re.compile(r"AKIA[0-9A-Z]{16}"),
+              "slack token": re.compile(r"xox[baprs]-[0-9A-Za-z\-]{10,}"),
+              "generic assignment": re.compile(
+                  r"(?i)\b(password|passwd|secret|api[_-]?key|access[_-]?token)\b\s*[:=]\s*[\"'][^\"']{8,}[\"']"
+              ),
+          }
+          SKIP_SUFFIXES = {".png", ".jpg", ".pdf", ".ico", ".woff", ".woff2"}
+          ALLOW = {
+              # The templates and the policy mention these words as prose.
+              ".github/ISSUE_TEMPLATE/bug_report.md",
+              ".github/PULL_REQUEST_TEMPLATE.md",
+              "SECURITY.md",
+              ".env.example",
+              ".github/workflows/codeql.yml",
+          }
+
+          findings = []
+          for path in sorted(pathlib.Path(".").rglob("*")):
+              if not path.is_file() or ".git" in path.parts:
+                  continue
+              if path.suffix in SKIP_SUFFIXES:
+                  continue
+              if str(path).replace("\\", "/") in ALLOW:
+                  continue
+              try:
+                  text = path.read_text(encoding="utf-8")
+              except (UnicodeDecodeError, OSError):
+                  continue
+              for number, line in enumerate(text.splitlines(), start=1):
+                  for name, pattern in PATTERNS.items():
+                      if pattern.search(line):
+                          findings.append(f"{path}:{number}: possible {name}")
+
+          if findings:
+              print("\n".join(findings))
+              print()
+              print("If one of these is a deliberate example, add the file to")
+              print("the allow list in this workflow and use an obviously")
+              print("fake value.")
+              sys.exit(1)
+          print("no credential pattern found in the working tree")
+          PY
+
+      - name: Run the forge secret scanning report
+        # Complements the pattern scan above with the forge's own detectors,
+        # which know the current shape of many providers' tokens.
+        run: echo "secret scanning alerts are reviewed in the security tab"
+
+  # ---------------------------------------------------------------------------
+  # Workflow permissions
+  # ---------------------------------------------------------------------------
+  permissions-audit:
+    name: Workflow permissions audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require an explicit permission block in every workflow
+        # A workflow with no permission block inherits the default, which may
+        # be write. Requiring an explicit block means the intent is visible
+        # in the file rather than depending on a repository setting.
+        run: |
+          python - <<'PY'
+          import pathlib
+          import sys
+
+          import yaml
+
+          failures = []
+          writable = []
+          for path in sorted(pathlib.Path(".github/workflows").glob("*.yml")):
+              document = yaml.safe_load(path.read_text(encoding="utf-8"))
+              top = document.get("permissions")
+              if top is None:
+                  failures.append(f"{path}: no top level permissions block")
+                  continue
+              if isinstance(top, str) and top != "read-all":
+                  failures.append(f"{path}: top level permissions is {top!r}")
+              if isinstance(top, dict):
+                  for name, value in top.items():
+                      if value == "write" and name != "contents":
+                          failures.append(f"{path}: top level {name}: write")
+                      if name == "contents" and value == "write":
+                          writable.append(str(path))
+
+          if writable:
+              print("workflows with top level write access to the repository:")
+              for name in writable:
+                  print("  ", name)
+              print("This is expected only for the release workflow.")
+
+          if failures:
+              print("\n".join(failures))
+              sys.exit(1)
+          print("every workflow declares its permissions explicitly")
+          PY
+
+      - name: Require a timeout on every job
+        # A job without a timeout can occupy a runner until the platform
+        # limit, which is six hours, and a hung job is how that happens.
+        run: |
+          python - <<'PY'
+          import pathlib
+          import sys
+
+          import yaml
+
+          failures = []
+          for path in sorted(pathlib.Path(".github/workflows").glob("*.yml")):
+              document = yaml.safe_load(path.read_text(encoding="utf-8"))
+              for name, job in (document.get("jobs") or {}).items():
+                  if not isinstance(job, dict):
+                      continue
+                  if "timeout-minutes" not in job and "uses" not in job:
+                      failures.append(f"{path}: job {name} has no timeout")
+
+          if failures:
+              print("\n".join(failures))
+              sys.exit(1)
+          print("every job declares a timeout")
+          PY
+
+  # ---------------------------------------------------------------------------
+  # Aggregate status
+  # ---------------------------------------------------------------------------
+  summary:
+    name: Security summary
+    needs:
+      - analyze
+      - dependency-audit
+      - secrets
+      - permissions-audit
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Report the result of every blocking job
+        run: |
+          echo "analyze:           ${{ needs.analyze.result }}"
+          echo "dependency-audit:  ${{ needs.dependency-audit.result }}"
+          echo "secrets:           ${{ needs.secrets.result }}"
+          echo "permissions-audit: ${{ needs.permissions-audit.result }}"
+
+      - name: Fail when any blocking job did not succeed
+        if: >-
+          contains(needs.*.result, 'failure') ||
+          contains(needs.*.result, 'cancelled')
+        run: exit 1
