@@ -1,3 +1,25 @@
+# Hooks that run before a commit is recorded.
+#
+# The upstream hooks below cover the tooling that has a published hook: the
+# whitespace and syntax checks, the formatter, the import order, the fast
+# linter, the type checker, and the security scanner. Each one pins a
+# revision, so an upgrade is a visible change to this file rather than a
+# quiet change of behaviour.
+#
+# The local hooks at the end cover what no upstream hook can: the
+# repository's own conventions. Those checks live in scripts/lint.sh, which
+# is also what the pipeline runs, so a convention is described once and a
+# contributor learns about a violation before pushing rather than after.
+#
+# Install both hook types once per clone:
+#
+#   pre-commit install
+#   pre-commit install --hook-type commit-msg
+#
+# Run everything over the whole repository, which is what the pipeline does:
+#
+#   pre-commit run --all-files
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
@@ -40,3 +62,36 @@ repos:
       - id: bandit
         args: [-c, .bandit]
         files: ^discretus/
+
+  # The repository's own conventions. They run through the same script the
+  # pipeline runs, so there is one implementation of each. The file list is
+  # not passed: every one of these checks looks at the repository as a whole,
+  # because a version that disagrees between two files and a page missing
+  # from a table of contents are both properties of the set of files rather
+  # than of any one of them.
+  - repo: local
+    hooks:
+      - id: repository-conventions
+        name: Repository conventions
+        entry: scripts/lint.sh --only prose,notice,version,docstrings,configs --no-color
+        language: system
+        pass_filenames: false
+        always_run: true
+        description: >
+          Plain punctuation, the license notice on every source file, one
+          version in every declaration, a docstring on every public name,
+          and a configuration set that parses.
+
+      - id: shell-scripts
+        name: Shell scripts
+        entry: scripts/lint.sh --only shell --no-color
+        language: system
+        pass_filenames: false
+        files: ^scripts/.*\.sh$
+        description: >
+          ShellCheck over the maintenance scripts, with the settings in
+          .shellcheckrc and no severity floor. The hook runs the analyser
+          when it is installed and reports it as skipped when it is not,
+          because a hook declared as a system command cannot install a
+          binary. The shell job of the lint workflow runs on a machine that
+          always has it, so a finding is never only local.
