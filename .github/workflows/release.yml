@@ -1,20 +1,77 @@
+# Release pipeline for discretus.
+#
+# A release is published when a tag of the form vX.Y.Z is pushed. The
+# pipeline refuses to publish unless the tag agrees with the version declared
+# in the package, the suite passes, and the artifacts build and carry valid
+# metadata. Publication uses trusted publishing, so no long lived credential
+# for the package index exists anywhere in this repository.
+#
+# The order is deliberate and each stage gates the next:
+#
+#   verify          The tag, the declared version, the changelog entry, and
+#                   the suite.
+#   build           The source distribution and the wheel, built once and
+#                   reused by every later stage.
+#   verify-artifacts Installing what was built, in clean environments, on
+#                   three platforms.
+#   publish-test    Publication to the test index, as a rehearsal.
+#   publish         Publication to the package index.
+#   github-release  The release entry, with the artifacts attached.
+#   announce        A short summary in the run log.
+#
+# Recovering from a failure: nothing before the publish stage has any
+# external effect, so a failure there is fixed by deleting the tag, pushing a
+# corrected commit, and tagging again. After the publish stage the version is
+# permanent, because the index does not allow a file to be replaced, and the
+# remedy is a new patch version rather than a retry.
+
 name: Release
 
 on:
   push:
     tags:
       - "v*"
+  # A manual run is offered for a rehearsal against the test index. It never
+  # publishes to the real index, which the condition on that job enforces.
   workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "Build and verify without publishing"
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+# A release must not be cancelled by a later push, so cancellation is
+# disabled for this workflow.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 permissions:
-  contents: write
+  contents: read
+
+env:
+  PYTHONDONTWRITEBYTECODE: "1"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  FORCE_COLOR: "1"
 
 jobs:
+  # ---------------------------------------------------------------------------
+  # Verification
+  # ---------------------------------------------------------------------------
   verify:
     name: Verify the tagged commit
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      version: ${{ steps.declared.outputs.version }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -27,46 +84,236 @@ jobs:
           python -m pip install -e .
           python -m pip install pytest hypothesis
 
-      - name: Run the test suite
-        run: python -m pytest tests
-
-      - name: Check that the tag matches the declared version
+      - name: Read the declared version
+        id: declared
         run: |
           declared=$(python -c "import discretus; print(discretus.__version__)")
-          tagged="${GITHUB_REF_NAME#v}"
-          echo "declared=$declared tagged=$tagged"
-          test "$declared" = "$tagged"
+          echo "version=${declared}" >> "${GITHUB_OUTPUT}"
+          echo "declared version is ${declared}"
 
+      - name: Check that the tag matches the declared version
+        # This is the check that makes a mismatched release impossible. It
+        # runs before anything is built, so a wrong tag costs a minute rather
+        # than a bad publication.
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          declared="${{ steps.declared.outputs.version }}"
+          tagged="${GITHUB_REF_NAME#v}"
+          echo "declared=${declared} tagged=${tagged}"
+          if [ "${declared}" != "${tagged}" ]; then
+            echo "The tag and the declared version disagree."
+            echo "Run scripts/bump_version.py rather than tagging by hand."
+            exit 1
+          fi
+
+      - name: Check that every declaration of the version agrees
+        # .bumpversion.cfg lists every file that carries the version. A
+        # disagreement means the bump was partial.
+        run: |
+          python - <<'PY'
+          import configparser
+          import pathlib
+          import re
+          import sys
+
+          version = re.search(
+              r'__version__ = "([^"]+)"',
+              pathlib.Path("discretus/__about__.py").read_text(encoding="utf-8"),
+          ).group(1)
+
+          config = configparser.RawConfigParser()
+          config.read(".bumpversion.cfg")
+          declared = {"__about__.py": version, "bumpversion": config["bumpversion"]["current_version"]}
+
+          for section in config.sections():
+              if not section.startswith("bumpversion:file"):
+                  continue
+              name = section.split(":", 2)[-1]
+              search = config[section]["search"].replace("{current_version}", version)
+              search = search.replace("{{", "{").replace("}}", "}")
+              text = pathlib.Path(name).read_text(encoding="utf-8")
+              if search not in text:
+                  print(f"{name}: does not contain {search!r}")
+                  sys.exit(1)
+              print(f"{name}: agrees")
+
+          if len(set(declared.values())) != 1:
+              print("disagreement:", declared)
+              sys.exit(1)
+          print("every declaration agrees on", version)
+          PY
+
+      - name: Check that the changelog has an entry for this version
+        # A release with no changelog entry is a release nobody can evaluate.
+        run: |
+          python - <<'PY'
+          import pathlib
+          import re
+          import sys
+
+          version = re.search(
+              r'__version__ = "([^"]+)"',
+              pathlib.Path("discretus/__about__.py").read_text(encoding="utf-8"),
+          ).group(1)
+          changelog = pathlib.Path("CHANGELOG.md").read_text(encoding="utf-8")
+
+          heading = f"## [{version}]"
+          if heading not in changelog:
+              print(f"CHANGELOG.md has no {heading} section")
+              sys.exit(1)
+
+          link = f"[{version}]:"
+          if link not in changelog:
+              print(f"CHANGELOG.md has no comparison link for {version}")
+              sys.exit(1)
+
+          section = changelog.split(heading, 1)[1].split("\n## ", 1)[0]
+          if len(section.strip().splitlines()) < 3:
+              print(f"the {version} section looks empty")
+              sys.exit(1)
+          print(f"the changelog documents {version}")
+          PY
+
+      - name: Check that the Unreleased section was emptied
+        # Leaving entries under Unreleased means they were released without
+        # being recorded against a version.
+        run: |
+          python - <<'PY'
+          import pathlib
+
+          changelog = pathlib.Path("CHANGELOG.md").read_text(encoding="utf-8")
+          section = changelog.split("## [Unreleased]", 1)[1].split("\n## ", 1)[0]
+          entries = [
+              line for line in section.splitlines()
+              if line.startswith("- ") and "Nothing yet" not in line
+          ]
+          if entries:
+              print("the Unreleased section still has entries:")
+              for line in entries:
+                  print("  ", line)
+              print("Move them under the new version heading.")
+              raise SystemExit(1)
+          print("the Unreleased section is empty")
+          PY
+
+      - name: Run the test suite
+        run: python -m pytest tests -q
+
+      - name: Run the docstring examples
+        run: |
+          python -m pip install pytest
+          python -m pytest --doctest-modules discretus -q
+
+  # ---------------------------------------------------------------------------
+  # Build
+  # ---------------------------------------------------------------------------
   build:
     name: Build the distribution
     needs: verify
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
 
-      - name: Build and check
+      - name: Build
         run: |
           python -m pip install --upgrade pip build twine
           python -m build
-          python -m twine check dist/*
+
+      - name: Check the metadata strictly
+        run: python -m twine check --strict dist/*
+
+      - name: Record the artifact digests
+        # Printed into the log so that the published files can be compared
+        # against what this run produced.
+        run: |
+          python - <<'PY'
+          import hashlib
+          import pathlib
+
+          for path in sorted(pathlib.Path("dist").iterdir()):
+              digest = hashlib.sha256(path.read_bytes()).hexdigest()
+              print(f"{digest}  {path.name}")
+          PY
 
       - name: Upload the artifacts
         uses: actions/upload-artifact@v4
         with:
           name: release-distribution
           path: dist/
+          retention-days: 90
 
-  publish:
-    name: Publish to the Python Package Index
+  # ---------------------------------------------------------------------------
+  # Artifact verification
+  # ---------------------------------------------------------------------------
+  verify-artifacts:
+    name: Verify the ${{ matrix.artifact }} on ${{ matrix.os }}
     needs: build
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        artifact: [wheel, sdist]
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download the artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-distribution
+          path: dist/
+
+      - name: Install the wheel
+        if: matrix.artifact == 'wheel'
+        shell: bash
+        run: python -m pip install dist/*.whl
+
+      - name: Install the source distribution
+        if: matrix.artifact == 'sdist'
+        shell: bash
+        run: python -m pip install dist/*.tar.gz
+
+      - name: Import and exercise the installed package
+        shell: bash
+        run: |
+          cd "${HOME}"
+          python -c "import discretus; print(discretus.__version__)"
+          python -m discretus prime 2147483647
+          python -m discretus factor 600851475143
+
+      - name: Confirm that the installed version matches the tag
+        shell: bash
+        run: |
+          cd "${HOME}"
+          installed=$(python -c "import discretus; print(discretus.__version__)")
+          expected="${{ needs.verify.outputs.version }}"
+          echo "installed=${installed} expected=${expected}"
+          test "${installed}" = "${expected}"
+
+  # ---------------------------------------------------------------------------
+  # Rehearsal against the test index
+  # ---------------------------------------------------------------------------
+  publish-test:
+    name: Publish to the test index
+    needs: verify-artifacts
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    environment: pypi
+    timeout-minutes: 20
+    environment: testpypi
     permissions:
+      # Trusted publishing exchanges this token for a short lived credential.
+      # No stored secret is involved.
       id-token: write
     steps:
       - name: Download the artifacts
@@ -78,14 +325,56 @@ jobs:
       - name: Publish
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
+          repository-url: https://test.pypi.org/legacy/
           skip-existing: true
 
+  # ---------------------------------------------------------------------------
+  # Publication
+  # ---------------------------------------------------------------------------
+  publish:
+    name: Publish to the package index
+    needs: verify-artifacts
+    # Only for a tag. A manual run can rehearse against the test index and
+    # can never reach this job.
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: pypi
+      url: https://pypi.org/project/discretus/
+    permissions:
+      id-token: write
+    steps:
+      - name: Download the artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-distribution
+          path: dist/
+
+      - name: Publish
+        # skip-existing makes a re run safe: a file already on the index is
+        # left alone rather than failing the job.
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
+          print-hash: true
+
+  # ---------------------------------------------------------------------------
+  # The release entry
+  # ---------------------------------------------------------------------------
   github-release:
-    name: Create the GitHub release
+    name: Create the release entry
     needs: publish
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      # The one job in the repository that writes to it, and the reason the
+      # permissions audit expects this workflow to have write access.
+      contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Download the artifacts
         uses: actions/download-artifact@v4
@@ -93,8 +382,58 @@ jobs:
           name: release-distribution
           path: dist/
 
-      - name: Publish the release notes
+      - name: Extract the changelog section for this version
+        # The release notes are the changelog entry rather than a generated
+        # list of commits, because the changelog is written for somebody
+        # upgrading and a commit list is not.
+        id: notes
+        run: |
+          python - <<'PY'
+          import os
+          import pathlib
+          import re
+
+          version = re.search(
+              r'__version__ = "([^"]+)"',
+              pathlib.Path("discretus/__about__.py").read_text(encoding="utf-8"),
+          ).group(1)
+          changelog = pathlib.Path("CHANGELOG.md").read_text(encoding="utf-8")
+          section = changelog.split(f"## [{version}]", 1)[1]
+          section = section.split("\n## ", 1)[0]
+          body = section.split("\n", 1)[1].strip()
+
+          pathlib.Path("release-notes.md").write_text(body + "\n", encoding="utf-8")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+              handle.write(f"version={version}\n")
+          print(body[:500])
+          PY
+
+      - name: Publish the release entry
         uses: softprops/action-gh-release@v2
         with:
+          name: "discretus ${{ steps.notes.outputs.version }}"
+          body_path: release-notes.md
           files: dist/*
-          generate_release_notes: true
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: true
+
+  # ---------------------------------------------------------------------------
+  # Summary
+  # ---------------------------------------------------------------------------
+  announce:
+    name: Release summary
+    needs: github-release
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Report the outcome and the manual steps that remain
+        run: |
+          echo "verify:           ${{ needs.github-release.result }}"
+          echo ""
+          echo "Remaining manual steps after a successful release:"
+          echo "  1. Confirm the documentation built for the new tag."
+          echo "  2. Install from the index in a clean environment and import."
+          echo "  3. Open the changelog and add the next Unreleased heading."
+          echo "  4. Deposit the archive record if the release is citable."
