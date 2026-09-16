@@ -95,9 +95,7 @@ def clear_denominators(values: Sequence[Any]) -> Tuple[List[int], int]:
         ([3, 2], 6)
     """
     denominator = common_denominator(values)
-    numerators = [
-        int(as_fraction(value) * denominator) for value in values
-    ]
+    numerators = [int(as_fraction(value) * denominator) for value in values]
     return numerators, denominator
 
 

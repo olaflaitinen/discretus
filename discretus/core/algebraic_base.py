@@ -346,7 +346,9 @@ class RingBase(Structure):
     ) -> None:
         members = list(carrier)
         self._additive = GroupBase(members, addition, symbol="+", verify=verify)
-        self._multiplicative = Monoid(members, multiplication, symbol=".", verify=verify)
+        self._multiplicative = Monoid(
+            members, multiplication, symbol=".", verify=verify
+        )
         if verify:
             self.verify_axioms()
 

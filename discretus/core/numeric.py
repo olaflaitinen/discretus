@@ -154,7 +154,7 @@ def integer_nth_root(value: int, degree: int) -> int:
         if candidate >= guess:
             break
         guess = candidate
-    while guess ** degree > value:
+    while guess**degree > value:
         guess -= 1
     while (guess + 1) ** degree <= value:
         guess += 1
@@ -185,7 +185,7 @@ def is_perfect_power(value: int) -> Optional[Tuple[int, int]]:
     best: Optional[Tuple[int, int]] = None
     for exponent in range(2, value.bit_length() + 1):
         base = integer_nth_root(value, exponent)
-        if base >= 2 and base ** exponent == value:
+        if base >= 2 and base**exponent == value:
             best = (base, exponent)
     return best
 

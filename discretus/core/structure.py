@@ -64,7 +64,9 @@ class Structure(ABC):
             DomainError: When the value is not in the carrier set.
         """
         if not self.contains(value):
-            raise DomainError(f"{name} {value!r} is not a member of {type(self).__name__}")
+            raise DomainError(
+                f"{name} {value!r} is not a member of {type(self).__name__}"
+            )
         return value
 
     def index_of(self, value: Any) -> int:

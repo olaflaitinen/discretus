@@ -146,7 +146,9 @@ def pairwise(iterable: Iterable[T]) -> Iterator[Tuple[T, T]]:
         yield (window[0], window[1])
 
 
-def unique(iterable: Iterable[T], key: Optional[Callable[[T], Any]] = None) -> Iterator[T]:
+def unique(
+    iterable: Iterable[T], key: Optional[Callable[[T], Any]] = None
+) -> Iterator[T]:
     """Yield the items in order, skipping later duplicates.
 
     Example:

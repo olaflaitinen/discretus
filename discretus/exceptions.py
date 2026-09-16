@@ -166,7 +166,9 @@ class OptionalDependencyError(BackendError, ImportError):
     """An optional dependency is required for the requested feature."""
 
     def __init__(self, package: str, extra: Optional[str] = None) -> None:
-        hint = f'pip install "discretus[{extra}]"' if extra else f"pip install {package}"
+        hint = (
+            f'pip install "discretus[{extra}]"' if extra else f"pip install {package}"
+        )
         super().__init__(
             f"the optional dependency {package!r} is required for this feature; "
             f"install it with: {hint}"

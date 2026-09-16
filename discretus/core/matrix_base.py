@@ -81,9 +81,7 @@ class MatrixBase:
         """
         if size < 0:
             raise DomainError(f"size must be non negative, got {size}")
-        return cls(
-            [[1 if i == j else 0 for j in range(size)] for i in range(size)]
-        )
+        return cls([[1 if i == j else 0 for j in range(size)] for i in range(size)])
 
     @classmethod
     def diagonal(cls, entries: Sequence[Any]) -> "MatrixBase":
@@ -95,10 +93,7 @@ class MatrixBase:
         """
         size = len(entries)
         return cls(
-            [
-                [entries[i] if i == j else 0 for j in range(size)]
-                for i in range(size)
-            ]
+            [[entries[i] if i == j else 0 for j in range(size)] for i in range(size)]
         )
 
     @classmethod
@@ -109,9 +104,7 @@ class MatrixBase:
         height = len(columns[0])
         if any(len(column) != height for column in columns):
             raise ValidationError("every column must have the same length")
-        return cls(
-            [[column[index] for column in columns] for index in range(height)]
-        )
+        return cls([[column[index] for column in columns] for index in range(height)])
 
     # Shape and access.
 
@@ -348,7 +341,9 @@ class MatrixBase:
 
     def is_identity(self) -> bool:
         """Return whether the matrix is the identity."""
-        return self.is_square() and self._rows == MatrixBase.identity(self.row_count)._rows
+        return (
+            self.is_square() and self._rows == MatrixBase.identity(self.row_count)._rows
+        )
 
     # Operators and rendering.
 
@@ -402,7 +397,9 @@ class MatrixBase:
             1 | 20
             3 | 4
         """
-        return format_table([[fraction_to_text(entry) for entry in row] for row in self._rows])
+        return format_table(
+            [[fraction_to_text(entry) for entry in row] for row in self._rows]
+        )
 
     def __repr__(self) -> str:
         inner = ", ".join(

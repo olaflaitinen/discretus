@@ -128,7 +128,9 @@ class LazySequence(Generic[T]):
         return dict(self._cache)
 
     def __repr__(self) -> str:
-        shown = ", ".join(repr(self[index]) for index in range(min(5, self._length or 5)))
+        shown = ", ".join(
+            repr(self[index]) for index in range(min(5, self._length or 5))
+        )
         tail = "..." if self._length is None or self._length > 5 else ""
         return f"LazySequence([{shown}{', ' + tail if tail else ''}])"
 

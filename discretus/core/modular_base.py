@@ -277,7 +277,9 @@ class ModularInteger:
 
     def power(self, exponent: int) -> "ModularInteger":
         """Return an integer power of the residue."""
-        return ModularInteger(mod_power(self._value, exponent, self._modulus), self._modulus)
+        return ModularInteger(
+            mod_power(self._value, exponent, self._modulus), self._modulus
+        )
 
     def inverse(self) -> "ModularInteger":
         """Return the multiplicative inverse.
@@ -387,9 +389,7 @@ def units(modulus: int) -> List[int]:
     """
     require_modulus(modulus)
     return [
-        value
-        for value in range(modulus)
-        if extended_euclidean(value, modulus)[0] == 1
+        value for value in range(modulus) if extended_euclidean(value, modulus)[0] == 1
     ]
 
 
@@ -453,5 +453,7 @@ def crt(values: Sequence[int], moduli: Sequence[int]) -> Tuple[int, int]:
         raise DomainError("at least one congruence is required")
     value, modulus = normalize(values[0], moduli[0]), require_modulus(moduli[0])
     for next_value, next_modulus in zip(values[1:], moduli[1:]):
-        value, modulus = crt_pair(value, modulus, next_value, require_modulus(next_modulus))
+        value, modulus = crt_pair(
+            value, modulus, next_value, require_modulus(next_modulus)
+        )
     return (value, modulus)

@@ -213,7 +213,9 @@ class PolynomialBase:
                 base = base.multiply(base)
         return result
 
-    def divmod(self, divisor: "PolynomialBase") -> Tuple["PolynomialBase", "PolynomialBase"]:
+    def divmod(
+        self, divisor: "PolynomialBase"
+    ) -> Tuple["PolynomialBase", "PolynomialBase"]:
         """Return the quotient and remainder of polynomial long division.
 
         The identity ``self == quotient * divisor + remainder`` holds
@@ -354,15 +356,23 @@ class PolynomialBase:
             if exponent == 0:
                 term = rendered
             else:
-                power = variable if exponent == 1 else (
-                    f"{variable}^{{{exponent}}}" if latex else f"{variable}^{exponent}"
+                power = (
+                    variable
+                    if exponent == 1
+                    else (
+                        f"{variable}^{{{exponent}}}"
+                        if latex
+                        else f"{variable}^{exponent}"
+                    )
                 )
                 if magnitude == 1:
                     term = power
                 else:
                     term = f"{rendered}{power}" if latex else f"{rendered}*{power}"
             sign = "-" if coefficient < 0 else "+"
-            pieces.append(f"{sign} {term}" if pieces else (f"-{term}" if sign == "-" else term))
+            pieces.append(
+                f"{sign} {term}" if pieces else (f"-{term}" if sign == "-" else term)
+            )
         return pieces
 
     def to_text(self) -> str:

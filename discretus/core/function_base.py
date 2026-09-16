@@ -153,9 +153,7 @@ class FunctionBase(Structure):
         """
         targets = {normalize_element(item) for item in subset}
         return sorted_elements(
-            argument
-            for argument, value in self._table.items()
-            if value in targets
+            argument for argument, value in self._table.items() if value in targets
         )
 
     def fiber(self, value: Any) -> List[Element]:
@@ -285,9 +283,8 @@ class FunctionBase(Structure):
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, FunctionBase):
-            return (
-                self._table == other._table
-                and set(self._codomain) == set(other._codomain)
+            return self._table == other._table and set(self._codomain) == set(
+                other._codomain
             )
         return NotImplemented
 

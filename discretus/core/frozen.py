@@ -11,7 +11,7 @@ documented.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Hashable, Iterator, Mapping, Optional, Tuple, TypeVar
+from typing import Any, Dict, Hashable, Iterator, Mapping, Optional, TypeVar
 
 from ..exceptions import StructureError
 

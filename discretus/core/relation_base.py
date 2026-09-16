@@ -103,9 +103,7 @@ class RelationBase(Structure):
             [1, 2]
         """
         value = normalize_element(element)
-        return sorted_elements(
-            right for left, right in self._pairs if left == value
-        )
+        return sorted_elements(right for left, right in self._pairs if left == value)
 
     def preimage_of(self, element: Any) -> List[Element]:
         """Return the predecessors of an element."""
@@ -266,9 +264,7 @@ class RelationBase(Structure):
 
     def reflexive_closure(self) -> "RelationBase":
         """Return the least reflexive relation containing this one."""
-        return self._rebuild(
-            self._pairs | {(item, item) for item in self._domain}
-        )
+        return self._rebuild(self._pairs | {(item, item) for item in self._domain})
 
     def symmetric_closure(self) -> "RelationBase":
         """Return the least symmetric relation containing this one."""
@@ -347,9 +343,7 @@ class RelationBase(Structure):
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, RelationBase):
-            return (
-                self._members == other._members and self._pairs == other._pairs
-            )
+            return self._members == other._members and self._pairs == other._pairs
         return NotImplemented
 
     def __hash__(self) -> int:

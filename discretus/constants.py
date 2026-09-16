@@ -55,7 +55,9 @@ GOLDEN_RATIO_CONJUGATE: Final[float] = GOLDEN_RATIO - 1.0
 SILVER_RATIO: Final[float] = 2.414213562373095048801688724209698078569671875376948073176
 SQRT_TWO: Final[float] = 1.414213562373095048801688724209698078569671875376948073176
 SQRT_FIVE: Final[float] = 2.236067977499789696409173668731276235440618359611525724270
-EULER_MASCHERONI: Final[float] = 0.577215664901532860606512090082402431042159335939923598805
+EULER_MASCHERONI: Final[float] = (
+    0.577215664901532860606512090082402431042159335939923598805
+)
 APERY: Final[float] = 1.202056903159594285399738161511449990764986292340498881792
 CATALAN_CONSTANT: Final[float] = 0.915965594177219015054603514932384110774
 #: Tolerance used when a routine has to compare inexact floating point values.
@@ -63,26 +65,96 @@ DEFAULT_TOLERANCE: Final[float] = 1e-12
 
 #: Every prime below one hundred, used for fast trial division.
 SMALL_PRIMES: Final[Tuple[int, ...]] = (
-    2, 3, 5, 7, 11, 13, 17, 19, 23, 29,
-    31, 37, 41, 43, 47, 53, 59, 61, 67, 71,
-    73, 79, 83, 89, 97,
+    2,
+    3,
+    5,
+    7,
+    11,
+    13,
+    17,
+    19,
+    23,
+    29,
+    31,
+    37,
+    41,
+    43,
+    47,
+    53,
+    59,
+    61,
+    67,
+    71,
+    73,
+    79,
+    83,
+    89,
+    97,
 )
 
 #: Witness bases that make the Miller Rabin test deterministic for every
 #: input below :data:`DETERMINISTIC_MILLER_RABIN_BOUND`.
 MILLER_RABIN_DETERMINISTIC_BASES: Final[Tuple[int, ...]] = (
-    2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37,
+    2,
+    3,
+    5,
+    7,
+    11,
+    13,
+    17,
+    19,
+    23,
+    29,
+    31,
+    37,
 )
 DETERMINISTIC_MILLER_RABIN_BOUND: Final[int] = 3_317_044_064_679_887_385_961_981
 
 FIRST_FIBONACCI: Final[Tuple[int, ...]] = (
-    0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987,
+    0,
+    1,
+    1,
+    2,
+    3,
+    5,
+    8,
+    13,
+    21,
+    34,
+    55,
+    89,
+    144,
+    233,
+    377,
+    610,
+    987,
 )
 FIRST_CATALAN: Final[Tuple[int, ...]] = (
-    1, 1, 2, 5, 14, 42, 132, 429, 1430, 4862, 16796, 58786,
+    1,
+    1,
+    2,
+    5,
+    14,
+    42,
+    132,
+    429,
+    1430,
+    4862,
+    16796,
+    58786,
 )
 FIRST_BELL: Final[Tuple[int, ...]] = (
-    1, 1, 2, 5, 15, 52, 203, 877, 4140, 21147, 115975,
+    1,
+    1,
+    2,
+    5,
+    15,
+    52,
+    203,
+    877,
+    4140,
+    21147,
+    115975,
 )
 
 # Canonical ASCII notation for the propositional connectives. The parser
