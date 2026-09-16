@@ -2,7 +2,7 @@
 # reproducible. Only development and documentation tooling is constrained,
 # because the runtime core has no third party dependencies.
 black<25
-isort<6
+isort<10
 mypy<2
 pytest<9
 ruff<1
