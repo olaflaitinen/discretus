@@ -231,6 +231,49 @@ command_available() {
     command -v -- "$1" > /dev/null 2>&1
 }
 
+# A Python tool can be reachable two ways, and both are worth accepting.
+#
+# As a module of the interpreter under test, which is what an editable
+# install of the development extra gives, and which is the form to prefer:
+# it guarantees the tool and the code it inspects see the same interpreter.
+#
+# As a standalone executable, which is what pipx and uv give. The tool then
+# runs on its own interpreter, which is fine for a formatter or a linter
+# because neither imports the code it reads. It is not fine for the type
+# checker, which does, so that one is only accepted as a module.
+#
+# The name of the module and the name of the executable differ for some
+# tools, which is why both are arguments.
+tool_available() {
+    local module="$1"
+    local program="${2:-$1}"
+    python_module_available "${module}" || command_available "${program}"
+}
+
+# Print the command that runs a tool, as separate words for a caller to read
+# into an array. The module form wins when it is available.
+tool_command() {
+    local module="$1"
+    local program="${2:-$1}"
+    if python_module_available "${module}"; then
+        printf '%s\n' "${PYTHON}" "-m" "${module}"
+    else
+        printf '%s\n' "${program}"
+    fi
+}
+
+# Read the command for a tool into an array.
+read_tool_command() {
+    local -n target="$1"
+    local module="$2"
+    local program="${3:-$2}"
+    target=()
+    local line
+    while IFS= read -r line; do
+        target+=("${line}")
+    done < <(tool_command "${module}" "${program}")
+}
+
 # Record the outcome of one check. Every check funnels through this, so the
 # summary cannot disagree with what was printed.
 record() {
@@ -287,22 +330,26 @@ run_check() {
 
 check_format() {
     local failures=0
-    if python_module_available black; then
+    local command=()
+
+    if tool_available black; then
+        read_tool_command command black
         if [[ "${FIX}" -eq 1 ]]; then
-            "${PYTHON}" -m black "${SOURCES[@]}" || failures=1
+            "${command[@]}" "${SOURCES[@]}" || failures=1
         else
-            "${PYTHON}" -m black --check --diff "${SOURCES[@]}" || failures=1
+            "${command[@]}" --check --diff "${SOURCES[@]}" || failures=1
         fi
     else
         SKIP_REASON="black is not installed"
         return "${SKIP_STATUS}"
     fi
 
-    if python_module_available isort; then
+    if tool_available isort; then
+        read_tool_command command isort
         if [[ "${FIX}" -eq 1 ]]; then
-            "${PYTHON}" -m isort "${SOURCES[@]}" || failures=1
+            "${command[@]}" "${SOURCES[@]}" || failures=1
         else
-            "${PYTHON}" -m isort --check-only --diff "${SOURCES[@]}" || failures=1
+            "${command[@]}" --check-only --diff "${SOURCES[@]}" || failures=1
         fi
     else
         printf 'note: isort is not installed, import order was not checked\n'
@@ -312,29 +359,33 @@ check_format() {
 }
 
 check_ruff() {
-    if ! python_module_available ruff; then
+    if ! tool_available ruff; then
         SKIP_REASON="ruff is not installed"
         return "${SKIP_STATUS}"
     fi
+    local command=()
+    read_tool_command command ruff
     if [[ "${FIX}" -eq 1 ]]; then
-        "${PYTHON}" -m ruff check --fix "${SOURCES[@]}"
+        "${command[@]}" check --fix "${SOURCES[@]}"
     else
-        "${PYTHON}" -m ruff check "${SOURCES[@]}"
+        "${command[@]}" check "${SOURCES[@]}"
     fi
 }
 
 check_flake8() {
-    if ! python_module_available flake8; then
+    if ! tool_available flake8; then
         SKIP_REASON="flake8 is not installed"
         return "${SKIP_STATUS}"
     fi
     # The rule selection lives in .flake8. Nothing is passed here, so that
     # the configuration is the single description of what the rules are.
-    "${PYTHON}" -m flake8 "${SOURCES[@]}"
+    local command=()
+    read_tool_command command flake8
+    "${command[@]}" "${SOURCES[@]}"
 }
 
 check_pylint() {
-    if ! python_module_available pylint; then
+    if ! tool_available pylint; then
         SKIP_REASON="pylint is not installed"
         return "${SKIP_STATUS}"
     fi
@@ -342,23 +393,31 @@ check_pylint() {
     # patterns that are correct in a test, an example, or a benchmark, and
     # silencing it there would mean scattering suppressions through code
     # whose purpose is to be read.
-    "${PYTHON}" -m pylint "${LIBRARY}"
+    local command=()
+    read_tool_command command pylint
+    "${command[@]}" "${LIBRARY}"
 }
 
 check_typing() {
+    # Accepted only as a module, because the type checker imports the code
+    # it examines. A standalone copy would resolve the annotations against
+    # its own interpreter and its own installed packages, and report
+    # differences that say nothing about this library.
     if ! python_module_available mypy; then
-        SKIP_REASON="mypy is not installed"
+        SKIP_REASON="mypy is not installed for this interpreter"
         return "${SKIP_STATUS}"
     fi
     "${PYTHON}" -m mypy "${LIBRARY}"
 }
 
 check_security() {
-    if ! python_module_available bandit; then
+    if ! tool_available bandit; then
         SKIP_REASON="bandit is not installed"
         return "${SKIP_STATUS}"
     fi
-    "${PYTHON}" -m bandit -c .bandit -r "${LIBRARY}"
+    local command=()
+    read_tool_command command bandit
+    "${command[@]}" -c .bandit -r "${LIBRARY}"
 }
 
 check_prose() {
@@ -738,20 +797,26 @@ check_shell() {
 }
 
 check_yaml() {
-    if ! python_module_available yamllint; then
+    if ! tool_available yamllint; then
         SKIP_REASON="yamllint is not installed"
         return "${SKIP_STATUS}"
     fi
-    "${PYTHON}" -m yamllint --strict .
+    local command=()
+    read_tool_command command yamllint
+    "${command[@]}" --strict .
 }
 
 check_spelling() {
-    if ! python_module_available codespell_lib; then
+    # The module and the executable are named differently, which is why
+    # both names are given.
+    if ! tool_available codespell_lib codespell; then
         SKIP_REASON="codespell is not installed"
         return "${SKIP_STATUS}"
     fi
     # The word list and the ignored paths live in .codespellrc.
-    "${PYTHON}" -m codespell_lib
+    local command=()
+    read_tool_command command codespell_lib codespell
+    "${command[@]}"
 }
 
 check_doctests() {
