@@ -81,10 +81,12 @@ class RelationLike(Protocol):
     """A binary relation viewed as a set of ordered pairs over a ground set."""
 
     @property
-    def domain(self) -> Iterable[Element]: ...
+    def domain(self) -> Iterable[Element]:
+        """The ground set the relation is defined over."""
 
     @property
-    def pairs(self) -> Iterable[Any]: ...
+    def pairs(self) -> Iterable[Any]:
+        """The ordered pairs that stand in the relation."""
 
     def holds(self, left: Element, right: Element) -> bool:
         """Return whether the pair stands in the relation."""
@@ -95,7 +97,8 @@ class GraphLike(Protocol):
     """The minimal interface the graph algorithms rely on."""
 
     @property
-    def directed(self) -> bool: ...
+    def directed(self) -> bool:
+        """Whether the edges are ordered pairs rather than unordered ones."""
 
     def vertices(self) -> List[Vertex]:
         """Return the vertices in deterministic order."""

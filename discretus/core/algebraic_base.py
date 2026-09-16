@@ -131,9 +131,19 @@ class Semigroup(Magma):
     structure_name = "semigroup"
 
     def axioms(self) -> Tuple[str, ...]:
+        """Return the axiom names, adding associativity to the magma ones."""
         return ("closure", "associativity")
 
     def verify_axioms(self) -> None:
+        """Verify the magma axioms, then associativity.
+
+        Raises:
+            AxiomViolationError: If a triple of members witnesses that the
+                operation is not associative.
+
+        Complexity:
+            O(n cubed) operation evaluations in the worst case.
+        """
         super().verify_axioms()
         counterexample = self._operation.associativity_counterexample()
         if counterexample is not None:
@@ -194,9 +204,19 @@ class Monoid(Semigroup):
     structure_name = "monoid"
 
     def axioms(self) -> Tuple[str, ...]:
+        """Return the axiom names, adding an identity to the semigroup ones."""
         return ("closure", "associativity", "identity")
 
     def verify_axioms(self) -> None:
+        """Verify the semigroup axioms, then the existence of an identity.
+
+        Raises:
+            AxiomViolationError: If no two sided identity member exists.
+
+        Complexity:
+            O(n squared) operation evaluations for the identity search, on
+            top of the cost of the semigroup verification.
+        """
         super().verify_axioms()
         self._operation.require_identity()
 
@@ -254,9 +274,19 @@ class GroupBase(Monoid):
     structure_name = "group"
 
     def axioms(self) -> Tuple[str, ...]:
+        """Return the axiom names, adding inverses to the monoid ones."""
         return ("closure", "associativity", "identity", "inverses")
 
     def verify_axioms(self) -> None:
+        """Verify the monoid axioms, then that every member has an inverse.
+
+        Raises:
+            AxiomViolationError: If a member has no two sided inverse.
+
+        Complexity:
+            O(n squared) operation evaluations for the inverse search, on
+            top of the cost of the monoid verification.
+        """
         super().verify_axioms()
         for item in self.elements():
             if self._operation.inverse(item) is None:
