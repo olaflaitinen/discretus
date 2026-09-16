@@ -1,7 +1,7 @@
 # Upper bounds used by the continuous integration pipeline to keep builds
 # reproducible. Only development and documentation tooling is constrained,
 # because the runtime core has no third party dependencies.
-black<25
+black<27
 isort<6
 mypy<2
 pytest<9
