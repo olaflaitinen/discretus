@@ -128,6 +128,10 @@ dependencies:
   # Markdown support, because the documentation sources are Markdown rather
   # than reStructuredText.
   - myst-parser>=2.0
+  # Required by the linkify extension that docs/conf.py enables. The pip
+  # form of this dependency is the myst-parser linkify extra; a conda list
+  # cannot express an extra, so the package is named directly.
+  - linkify-it-py>=2.0
   - furo>=2024.1.29
   - sphinx-copybutton>=0.5
   # Live rebuild during prose work, which shortens the review loop.
