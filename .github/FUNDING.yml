@@ -1,9 +1,72 @@
-# Funding channels for discretus.
+# Funding configuration for discretus.
 #
-# The project is developed at the Department of Physics and Mathematics,
-# Faculty of Science, Forestry and Technology, University of Eastern Finland,
-# and does not currently accept individual sponsorship.
-# Institutional collaboration enquiries go to the corresponding author.
+# The forge reads this file to decide what appears on the sponsor button of
+# the repository. Every platform key it supports is listed below, and all but
+# two are commented out, so that the file documents the full set of options
+# rather than only the ones currently in use.
+#
+# The project's position on funding, stated plainly because it sets
+# expectations for everyone involved:
+#
+#   discretus is unfunded academic work carried out at the Department of
+#   Physics and Mathematics, Faculty of Science, Forestry and Technology,
+#   University of Eastern Finland. It receives no grant, no commercial
+#   sponsorship, and no individual sponsorship. AUTHORS.md records the same
+#   position, and SECURITY.md notes that there is no bug bounty.
+#
+#   The consequence for a contributor is the response time. The project aims
+#   to acknowledge a report within five working days and to review a pull
+#   request within a few days, and it achieves that most of the time and not
+#   all of the time. Saying so is more useful than a funding link that
+#   implies a service level nobody has promised.
+#
+#   The consequence for a user is that the licence is the whole of the
+#   relationship. The Mozilla Public License 2.0 grants what it grants and
+#   disclaims warranty and liability, and no payment changes that.
+#
+# What the project does welcome, none of which is money:
+#
+#   A defect report with a minimal reproduction, which is often more work
+#   than the fix it leads to.
+#   A mathematical review that finds a misstated theorem or a wrong
+#   complexity claim.
+#   A documentation correction, which helps every later reader.
+#   Institutional collaboration, teaching use, and citation. The
+#   correspondence address is yimanov@student.uef.fi and the citation
+#   metadata is in CITATION.cff.
+#
+# The keys below are the complete set the forge accepts. Uncommenting one
+# adds it to the sponsor button; leaving it commented documents that it was
+# considered.
 
+# The forge's own sponsorship programme, for the maintainer account.
 github: [olaflaitinen]
+
+# A link shown alongside the platform entries. It points at the repository
+# rather than at a payment page, because there is nothing to pay.
 custom: ["https://github.com/olaflaitinen/discretus"]
+
+# Platforms that are deliberately not used. Each is left in place with its
+# expected value shape, so that enabling one later is a one line change and
+# so that a reader can see that the omission is a decision rather than an
+# oversight.
+#
+# patreon: username
+# open_collective: project-name
+# ko_fi: username
+# tidelift: pypi/discretus
+# community_bridge: project-name
+# liberapay: username
+# issuehunt: username
+# lfx_mentorship: project-name
+# polar: username
+# buy_me_a_coffee: username
+# thanks_dev: username
+#
+# The Tidelift entry deserves a note, since it is the one that would apply
+# most naturally to a package on the index. Tidelift pays maintainers for
+# commitments about security response, licensing clarity, and maintenance
+# cadence. This project already meets most of those commitments as a matter
+# of policy, documented in SECURITY.md and CONTRIBUTING.md, and making them
+# contractual is not something an unfunded single maintainer project should
+# do. If that changes, this is the line to uncomment.
