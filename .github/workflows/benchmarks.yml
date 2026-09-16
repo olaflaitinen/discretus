@@ -1,25 +1,262 @@
+# Performance measurement for discretus.
+#
+# The library documents the asymptotic complexity of every nontrivial
+# routine, and a documented bound is only credible if it is measured. This
+# workflow runs the benchmark suite, reports the results as an artifact, and
+# on a pull request compares them against the default branch so that a
+# regression is visible in review rather than in a user's program.
+#
+# What a benchmark on a shared runner can and cannot tell you:
+#
+#   It can detect a change of asymptotic behaviour, because a growth rate
+#   survives a noisy machine.
+#   It can detect a large constant factor change, roughly a factor of two or
+#   more.
+#   It cannot resolve a few percent. A runner is shared, its processor model
+#   varies between jobs, and its neighbours are unknown. A result inside that
+#   margin is not evidence either way.
+#
+# The comparison job is therefore advisory. It annotates a pull request with
+# what it measured and never fails it, and a claimed speedup in a pull
+# request is expected to come with a local measurement, as the pull request
+# template asks.
+#
+# Job overview:
+#
+#   run         The suite on the default interpreter, on a schedule and on
+#               the default branch.
+#   compare     The suite on a pull request and on its base, side by side.
+#   scaling     A growth rate check for the routines whose complexity the
+#               documentation states.
+#   interpreters The suite on the oldest and newest interpreters and on PyPy.
+#   summary     The aggregate status of the blocking jobs.
+
 name: Benchmarks
 
 on:
   push:
     branches: [main]
+    paths:
+      - "discretus/**"
+      - "benchmarks/**"
+      - ".github/workflows/benchmarks.yml"
   pull_request:
     branches: [main]
+    paths:
+      - "discretus/**"
+      - "benchmarks/**"
+  # A weekly run gives a baseline that is independent of any change, which is
+  # what makes a later comparison meaningful.
   schedule:
     - cron: "0 4 * * 0"
   workflow_dispatch:
+    inputs:
+      quick:
+        description: "Run a reduced set of measurements"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "true"
+          - "false"
 
 concurrency:
-  group: benchmarks-${{ github.ref }}
-  cancel-in-progress: true
+  group: benchmarks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
 
+env:
+  PYTHONDONTWRITEBYTECODE: "1"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  # A fixed hash seed removes one source of run to run variation in anything
+  # that touches a dictionary or a set.
+  PYTHONHASHSEED: "0"
+  FORCE_COLOR: "1"
+
 jobs:
+  # ---------------------------------------------------------------------------
+  # The suite
+  # ---------------------------------------------------------------------------
   run:
     name: Run the benchmark suite
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+
+      - name: Report the machine
+        # Recorded with the results, because a measurement without the
+        # machine it was taken on is not comparable with anything.
+        run: |
+          python -c "import platform; print(platform.platform()); print(platform.processor())"
+          nproc
+          free -h || true
+          cat /proc/cpuinfo | grep "model name" | head -1 || true
+
+      - name: Run the benchmarks
+        run: python -m benchmarks --json benchmark-results.json
+
+      - name: Print the results
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          import pathlib
+
+          path = pathlib.Path("benchmark-results.json")
+          if not path.exists():
+              print("no results were produced")
+              raise SystemExit(0)
+
+          data = json.loads(path.read_text(encoding="utf-8"))
+          rows = data.get("results", data if isinstance(data, list) else [])
+          width = max((len(str(row.get("name", ""))) for row in rows), default=4)
+          print(f"{'name'.ljust(width)}  best (s)")
+          for row in rows:
+              best = row.get("best", row.get("min", 0.0))
+              print(f"{str(row.get('name', '')).ljust(width)}  {best:.6f}")
+          PY
+
+      - name: Upload the results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: benchmark-results
+          path: benchmark-results.json
+          # Kept long enough to compare a release against the one before it.
+          retention-days: 90
+          if-no-files-found: warn
+
+  # ---------------------------------------------------------------------------
+  # Comparison against the base branch
+  # ---------------------------------------------------------------------------
+  compare:
+    name: Compare against the base branch
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # Advisory. A shared runner cannot resolve a small difference, and
+    # failing a pull request on runner noise would train contributors to
+    # ignore this job.
+    continue-on-error: true
+    steps:
+      - name: Check out the pull request
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Measure the pull request
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+          python -m benchmarks --json head-results.json || echo "{}" > head-results.json
+
+      - name: Measure the base branch
+        # The same runner, immediately afterwards, which is the only way to
+        # make two measurements on shared hardware comparable at all.
+        run: |
+          git stash list
+          git checkout --detach "origin/${GITHUB_BASE_REF}"
+          python -m pip install -e .
+          python -m benchmarks --json base-results.json || echo "{}" > base-results.json
+          git checkout --detach "${GITHUB_SHA}"
+          python -m pip install -e .
+
+      - name: Report the difference
+        run: |
+          python - <<'PY'
+          import json
+          import pathlib
+
+
+          def load(name):
+              path = pathlib.Path(name)
+              if not path.exists():
+                  return {}
+              data = json.loads(path.read_text(encoding="utf-8") or "{}")
+              rows = data.get("results", data if isinstance(data, list) else [])
+              return {
+                  row["name"]: row.get("best", row.get("min", 0.0))
+                  for row in rows
+                  if isinstance(row, dict) and "name" in row
+              }
+
+
+          head, base = load("head-results.json"), load("base-results.json")
+          if not head or not base:
+              print("not enough data to compare")
+              raise SystemExit(0)
+
+          names = sorted(set(head) & set(base))
+          width = max((len(name) for name in names), default=4)
+          print(f"{'name'.ljust(width)}  base (s)   head (s)   ratio")
+          notable = []
+          for name in names:
+              before, after = base[name], head[name]
+              if before <= 0:
+                  continue
+              ratio = after / before
+              print(f"{name.ljust(width)}  {before:9.6f}  {after:9.6f}  {ratio:6.2f}")
+              # Only a factor of two or more is reported as notable, which is
+              # well outside the noise of a shared runner.
+              if ratio > 2.0 or ratio < 0.5:
+                  notable.append((name, ratio))
+
+          print()
+          if notable:
+              print("differences of a factor of two or more:")
+              for name, ratio in notable:
+                  direction = "slower" if ratio > 1 else "faster"
+                  print(f"  {name}: {ratio:.2f} times, {direction}")
+              print()
+              print("A shared runner cannot resolve a few percent, so treat")
+              print("anything smaller as noise and confirm a real change with")
+              print("a local measurement.")
+          else:
+              print("no difference larger than a factor of two")
+          PY
+
+      - name: Upload both result sets
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: benchmark-comparison
+          path: |
+            head-results.json
+            base-results.json
+          retention-days: 30
+          if-no-files-found: warn
+
+  # ---------------------------------------------------------------------------
+  # Growth rate check
+  # ---------------------------------------------------------------------------
+  scaling:
+    name: Growth rate check
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # Advisory for now. A growth rate survives a noisy machine, so this job
+    # is the one that could become blocking once the suite has settled.
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -28,16 +265,148 @@ jobs:
           python-version: "3.12"
           cache: pip
 
-      - name: Install the package
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+
+      - name: Measure how a few routines scale with their input
+        # The point is not the absolute time. It is that a routine documented
+        # as linear grows linearly and a routine documented as logarithmic
+        # does not grow visibly at all. A change of growth rate is a defect
+        # even when the absolute times look acceptable.
+        run: |
+          python - <<'PY'
+          import math
+          import time
+
+
+          def measure(call, repeats=3):
+              best = float("inf")
+              for _ in range(repeats):
+                  start = time.perf_counter()
+                  call()
+                  best = min(best, time.perf_counter() - start)
+              return best
+
+
+          print("routine                      size        best (s)    ratio")
+          print("-" * 62)
+
+          try:
+              from discretus.number_theory.primes import primes_up_to
+          except Exception as error:
+              print("primes_up_to unavailable:", error)
+              primes_up_to = None
+
+          if primes_up_to is not None:
+              previous = None
+              for size in (100_000, 200_000, 400_000, 800_000):
+                  best = measure(lambda size=size: primes_up_to(size))
+                  ratio = "" if previous is None else f"{best / previous:6.2f}"
+                  print(f"primes_up_to (sieve)     {size:>9}   {best:9.5f}   {ratio}")
+                  previous = best
+              print("  expected: roughly linear, so each ratio near two")
+              print()
+
+          try:
+              from discretus.number_theory.modular import mod_exp
+          except Exception as error:
+              print("mod_exp unavailable:", error)
+              mod_exp = None
+
+          if mod_exp is not None:
+              previous = None
+              for bits in (256, 512, 1024, 2048):
+                  base = 3
+                  exponent = (1 << bits) - 1
+                  modulus = (1 << bits) + 7
+                  best = measure(
+                      lambda base=base, exponent=exponent, modulus=modulus:
+                      mod_exp(base, exponent, modulus)
+                  )
+                  ratio = "" if previous is None else f"{best / previous:6.2f}"
+                  print(f"mod_exp                  {bits:>9}   {best:9.5f}   {ratio}")
+                  previous = best
+              print("  expected: far below the growth of the exponent itself")
+              print()
+
+          try:
+              from discretus.recurrences.sequences import fibonacci
+          except Exception as error:
+              print("fibonacci unavailable:", error)
+              fibonacci = None
+
+          if fibonacci is not None:
+              previous = None
+              for index in (10_000, 20_000, 40_000, 80_000):
+                  best = measure(lambda index=index: fibonacci(index))
+                  ratio = "" if previous is None else f"{best / previous:6.2f}"
+                  print(f"fibonacci                {index:>9}   {best:9.5f}   {ratio}")
+                  previous = best
+              print("  expected: logarithmic in the index through matrix powers,")
+              print("  so each ratio well below two")
+          PY
+
+  # ---------------------------------------------------------------------------
+  # Across interpreters
+  # ---------------------------------------------------------------------------
+  interpreters:
+    name: Measure on ${{ matrix.python-version }}
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        # The oldest and newest supported interpreters plus PyPy. The library
+        # is pure Python and its hot paths are interpreter bound loops over
+        # integers, so the spread between these three is large and worth
+        # knowing.
+        python-version: ["3.9", "3.13", "pypy3.10"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e .
 
       - name: Run the benchmarks
-        run: python -m benchmarks --json benchmark-results.json
+        run: python -m benchmarks --json "benchmark-${{ matrix.python-version }}.json"
 
       - name: Upload the results
         uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: benchmark-results
-          path: benchmark-results.json
+          name: benchmark-results-${{ matrix.python-version }}
+          path: "benchmark-*.json"
+          retention-days: 30
+          if-no-files-found: warn
+
+  # ---------------------------------------------------------------------------
+  # Aggregate status
+  # ---------------------------------------------------------------------------
+  summary:
+    name: Benchmark summary
+    needs:
+      - run
+      - compare
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Report the result of every job
+        run: |
+          echo "run:     ${{ needs.run.result }}"
+          echo "compare: ${{ needs.compare.result }}"
+          echo ""
+          echo "Both jobs are advisory. A shared runner cannot resolve a few"
+          echo "percent, so a performance claim in a pull request is expected"
+          echo "to come with a local measurement as well."
