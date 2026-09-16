@@ -1,0 +1,292 @@
+/*
+ * Supplementary stylesheet for the discretus documentation.
+ *
+ * The Furo theme supplies the layout, the colour system, and the light and
+ * dark schemes. This file adds only what the content of this particular
+ * documentation needs, which falls into four groups:
+ *
+ *   1. Mathematics, which appears in almost every page and needs to sit
+ *      comfortably inside running prose as well as on its own line.
+ *   2. The complexity admonition, which the docstrings generate and which
+ *      deserves to be visually distinct because it is often the single most
+ *      useful line in a reference entry.
+ *   3. Tables, of which the documentation has many, several of them wide.
+ *   4. Code and doctest blocks, including the ASCII renderings the
+ *      visualization package produces, which must not be reflowed.
+ *
+ * Every colour is expressed through a theme variable rather than a literal,
+ * so that the light and the dark scheme both remain legible without a second
+ * set of rules.
+ */
+
+/* ------------------------------------------------------------------------ */
+/* Variables                                                               */
+/* ------------------------------------------------------------------------ */
+
+:root {
+  --discretus-spacing-tight: 0.35rem;
+  --discretus-spacing: 0.75rem;
+  --discretus-spacing-loose: 1.25rem;
+  --discretus-radius: 6px;
+  --discretus-rule: 3px;
+  --discretus-mono-size: 0.875em;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Mathematics                                                              */
+/* ------------------------------------------------------------------------ */
+
+/* Displayed equations get room to breathe and scroll horizontally rather
+ * than overflowing the content column, which matters for the longer
+ * derivations in the tutorials. */
+.math-display,
+div.math {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: var(--discretus-spacing) 0;
+  margin: var(--discretus-spacing-loose) 0;
+}
+
+/* Inline mathematics should not increase the line height of a paragraph. */
+.math-inline,
+span.math {
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* MathJax renders at a slightly larger optical size than the surrounding
+ * text. Bringing it down keeps a formula from dominating its sentence. */
+mjx-container[jax="CHTML"] {
+  font-size: 108% !important;
+}
+
+mjx-container[jax="CHTML"][display="true"] {
+  margin: var(--discretus-spacing-loose) 0 !important;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Admonitions generated from docstring sections                            */
+/* ------------------------------------------------------------------------ */
+
+/* The Complexity section is registered as a custom Napoleon section, so it
+ * arrives as an admonition. It is given its own accent and a monospaced
+ * body, because it almost always contains a bound such as O(n log n). */
+.admonition.complexity {
+  border-left: var(--discretus-rule) solid var(--color-brand-primary);
+  background-color: var(--color-admonition-background);
+  border-radius: var(--discretus-radius);
+  padding: var(--discretus-spacing) var(--discretus-spacing-loose);
+}
+
+.admonition.complexity > .admonition-title {
+  font-variant: small-caps;
+  letter-spacing: 0.02em;
+  background-color: transparent;
+  padding-left: 0;
+}
+
+.admonition.complexity p {
+  font-family: var(--font-stack--monospace);
+  font-size: var(--discretus-mono-size);
+  margin-bottom: 0;
+}
+
+/* The Example section is a doctest. Keeping its border subtle prevents a
+ * page with many short examples from looking like a stack of warnings. */
+.admonition.example {
+  border-left: var(--discretus-rule) solid var(--color-brand-content);
+  border-radius: var(--discretus-radius);
+}
+
+/* ------------------------------------------------------------------------ */
+/* Tables                                                                   */
+/* ------------------------------------------------------------------------ */
+
+/* Wide tables, for instance the complexity reference and the exception
+ * mapping, scroll within the content column instead of widening the page. */
+table.docutils,
+.table-wrapper > table {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+
+table.docutils th {
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 2px solid var(--color-background-border);
+  padding: var(--discretus-spacing-tight) var(--discretus-spacing);
+  white-space: nowrap;
+}
+
+table.docutils td {
+  padding: var(--discretus-spacing-tight) var(--discretus-spacing);
+  border-bottom: 1px solid var(--color-background-border);
+  vertical-align: top;
+}
+
+/* A cell that contains only code, which is common in the reference tables,
+ * reads better without the surrounding background the theme applies to
+ * inline code. */
+table.docutils td > code.literal {
+  background: transparent;
+  padding: 0;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Code, doctests, and rendered output                                      */
+/* ------------------------------------------------------------------------ */
+
+div.highlight pre,
+pre.literal-block {
+  border-radius: var(--discretus-radius);
+  line-height: 1.5;
+  tab-size: 4;
+}
+
+/* The visualization package renders Hasse diagrams, truth tables, Karnaugh
+ * maps, and Cayley tables as ASCII art. Those blocks depend on exact
+ * character alignment, so wrapping and proportional spacing are disabled
+ * and the block scrolls instead. */
+div.highlight-text pre,
+pre.ascii-render {
+  white-space: pre;
+  overflow-x: auto;
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "calt" 0;
+}
+
+/* The copy button should not cover the first characters of a short block. */
+button.copybtn {
+  top: var(--discretus-spacing-tight);
+  right: var(--discretus-spacing-tight);
+  opacity: 0.45;
+}
+
+button.copybtn:hover {
+  opacity: 1;
+}
+
+/* Doctest prompts are not part of the code a reader wants to copy, and the
+ * copy button is configured to strip them. Dimming them slightly makes the
+ * distinction visible before the reader clicks. */
+.highlight .gp {
+  opacity: 0.6;
+  user-select: none;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Structure                                                                */
+/* ------------------------------------------------------------------------ */
+
+/* Signatures in the API reference are long, because the routines are
+ * annotated. Hanging indentation keeps the parameter list aligned under the
+ * routine name rather than under the module path. */
+dl.py > dt {
+  padding-left: 1.5rem;
+  text-indent: -1.5rem;
+  border-bottom: 1px solid var(--color-background-border);
+  padding-bottom: var(--discretus-spacing-tight);
+}
+
+dl.py dd {
+  margin-top: var(--discretus-spacing-tight);
+}
+
+/* The module level heading of each reference page. */
+dl.py.module > dt {
+  border-bottom-width: 2px;
+}
+
+/* Definition lists are used by the glossary, where the term deserves more
+ * weight than the theme gives it by default. */
+dl.simple > dt,
+dl.glossary > dt {
+  font-weight: 600;
+}
+
+/* Section headings in the long pages, such as the tutorials, benefit from a
+ * clearer separation than the default vertical rhythm provides. */
+h2 {
+  margin-top: 2.25rem;
+  padding-bottom: var(--discretus-spacing-tight);
+  border-bottom: 1px solid var(--color-background-border);
+}
+
+h3 {
+  margin-top: 1.75rem;
+}
+
+/* The permalink marker is present for every heading and should be quiet
+ * until the heading is hovered. */
+a.headerlink {
+  opacity: 0;
+  transition: opacity 120ms ease-in-out;
+  padding-left: 0.3em;
+}
+
+:hover > a.headerlink {
+  opacity: 0.5;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Print                                                                    */
+/* ------------------------------------------------------------------------ */
+
+/* The documentation is printed for teaching, so the print rules remove the
+ * interface elements and let code blocks break across pages. */
+@media print {
+  .sidebar-drawer,
+  .mobile-header,
+  .toc-drawer,
+  button.copybtn,
+  a.headerlink {
+    display: none !important;
+  }
+
+  .content {
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  div.highlight pre,
+  pre.literal-block {
+    white-space: pre-wrap;
+    word-break: break-word;
+    border: 1px solid #999;
+  }
+
+  table.docutils {
+    display: table;
+    overflow: visible;
+  }
+
+  a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.85em;
+    word-break: break-all;
+  }
+}
+
+/* ------------------------------------------------------------------------ */
+/* Accessibility                                                            */
+/* ------------------------------------------------------------------------ */
+
+/* Respect a reader who has asked for reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  a.headerlink,
+  button.copybtn {
+    transition: none;
+  }
+}
+
+/* Keep the keyboard focus ring visible on every interactive element, which
+ * the theme suppresses for some of them. */
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+}
