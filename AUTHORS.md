@@ -1,13 +1,15 @@
 # Authors
 
-discretus is developed and maintained at the School of ICT, Metropolia
-University of Applied Sciences.
+discretus is developed and maintained at the Department of Physics and
+Mathematics, Faculty of Science, Forestry and Technology, University of
+Eastern Finland.
 
 ## Author and maintainer
 
-- Olaf Yunus Laitinen Imanov, School of ICT, Metropolia University of Applied
-  Sciences, Myllypurontie 1, 00920 Helsinki, Finland.
-  Email: yunus.imanov@metropolia.fi. ORCID: 0009-0006-5184-0810.
+- Olaf Yunus Laitinen Imanov, Student Researcher, Department of Physics and
+  Mathematics, Faculty of Science, Forestry and Technology, University of
+  Eastern Finland, Joensuu, Finland.
+  Email: yimanov@student.uef.fi. ORCID: 0009-0006-5184-0810.
 
 ## Contributors
 

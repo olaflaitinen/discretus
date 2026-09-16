@@ -14,7 +14,7 @@ severe and a straightforward backport exists.
 ## Reporting a vulnerability
 
 Please do not open a public issue for a security problem. Report it privately
-by email to yunus.imanov@metropolia.fi with the subject line
+by email to yimanov@student.uef.fi with the subject line
 `discretus security report`.
 
 A useful report contains the affected version, the platform and interpreter

@@ -1,3 +1,7 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 """discretus: a rigorous library for discrete mathematics in pure Python.
 
 The package spans seven domains, namely set theory, mathematical logic,

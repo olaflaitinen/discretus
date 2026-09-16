@@ -2,11 +2,11 @@
 
 **discretus is a rigorous, production-grade library for Discrete Mathematics in pure Python.**
 
-**Author:** Olaf Yunus Laitinen Imanov $^{\mathrm{a},*}$
+**Author:** Olaf Yunus Laitinen Imanov $^{\mathrm{a},*}$, Student Researcher
 
-$^{\mathrm{a}}$ School of ICT, Metropolia University of Applied Sciences, Myllypurontie 1, 00920 Helsinki, Finland
+$^{\mathrm{a}}$ Department of Physics and Mathematics, Faculty of Science, Forestry and Technology, University of Eastern Finland, Joensuu, Finland
 
-$^{*}$ Corresponding author at: School of ICT, Metropolia University of Applied Sciences, Myllypurontie 1, 00920 Helsinki, Finland. Email: yunus.imanov@metropolia.fi. Phone: +46 76 236 80 88. ORCID: 0009-0006-5184-0810.
+$^{*}$ Corresponding author at: Department of Physics and Mathematics, Faculty of Science, Forestry and Technology, University of Eastern Finland, Joensuu, Finland. Email: yimanov@student.uef.fi. ORCID: 0009-0006-5184-0810.
 
 ---
 
@@ -541,7 +541,7 @@ If you discover a security issue, please do not open a public issue. Instead, co
 
 **Is discretus suitable for teaching.** Yes. The reference implementations are written to be read, the step recording mode exposes intermediate reasoning, and the LaTeX export produces publication ready output for slides and handouts.
 
-**Can I use discretus in commercial software.** Yes. The library is released under the permissive MIT License, which places minimal conditions on use, modification, and redistribution.
+**Can I use discretus in commercial software.** Yes. The library is released under the Mozilla Public License 2.0, which permits use inside a larger work of any license, including a proprietary one, provided that modifications to the files of this library are published under the same license.
 
 **How does discretus handle very large integers.** All number theoretic routines operate over arbitrary precision integers, so results are exact regardless of size, limited only by available memory and time.
 
@@ -575,16 +575,18 @@ If you use discretus in academic work, please cite it using the metadata in the 
 
 ## Acknowledgments
 
-discretus is developed and maintained at the School of ICT, Metropolia University of Applied Sciences. The design draws on decades of classical results in discrete mathematics and on the collective experience of the open source scientific Python community, whose conventions and tooling made this library possible.
+discretus is developed and maintained at the Department of Physics and Mathematics, Faculty of Science, Forestry and Technology, University of Eastern Finland. The design draws on decades of classical results in discrete mathematics and on the collective experience of the open source scientific Python community, whose conventions and tooling made this library possible.
 
 ## License
 
-discretus is released under the MIT License. This permissive license allows use, copying, modification, merging, publication, distribution, sublicensing, and sale, subject only to the inclusion of the copyright notice and the permission notice, and it disclaims warranty and liability. The full text is provided in the `LICENSE` file at the repository root.
+discretus is released under the Mozilla Public License 2.0. The license is a file level weak copyleft license. It allows use, copying, modification, distribution, and sale, and it allows the library to be combined with code under any other license, including a proprietary license. In exchange, any file of this library that you modify and distribute must be made available under the same license, and the license notice and the disclaimers of warranty and liability must be preserved. The full text is provided in the `LICENSE` file at the repository root, and the copyright notice is in the `NOTICE` file.
 
 ## Author and Contact
 
 **Author:** Olaf Yunus Laitinen Imanov $^{\mathrm{a},*}$
 
-$^{\mathrm{a}}$ School of ICT, Metropolia University of Applied Sciences, Myllypurontie 1, 00920 Helsinki, Finland
+**Position:** Student Researcher
 
-$^{*}$ Corresponding author. Email: yunus.imanov@metropolia.fi. Phone: +46 76 236 80 88. ORCID: 0009-0006-5184-0810.
+$^{\mathrm{a}}$ Department of Physics and Mathematics, Faculty of Science, Forestry and Technology, University of Eastern Finland, Joensuu, Finland
+
+$^{*}$ Corresponding author. Email: yimanov@student.uef.fi. ORCID: 0009-0006-5184-0810.

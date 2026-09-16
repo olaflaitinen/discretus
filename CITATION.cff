@@ -9,17 +9,17 @@ abstract: >-
 type: software
 version: 1.0.0
 date-released: "2026-01-15"
-license: MIT
+license: MPL-2.0
 repository-code: "https://github.com/olaflaitinen/discretus"
 url: "https://discretus.readthedocs.io"
 authors:
   - family-names: "Laitinen Imanov"
     given-names: "Olaf Yunus"
-    email: "yunus.imanov@metropolia.fi"
+    email: "yimanov@student.uef.fi"
     orcid: "https://orcid.org/0009-0006-5184-0810"
     affiliation: >-
-      School of ICT, Metropolia University of Applied Sciences, Myllypurontie
-      1, 00920 Helsinki, Finland
+      Department of Physics and Mathematics, Faculty of Science, Forestry and
+      Technology, University of Eastern Finland, Joensuu, Finland
 keywords:
   - discrete mathematics
   - set theory
@@ -34,7 +34,7 @@ preferred-citation:
   title: "discretus: A Discrete Mathematics library for Python"
   version: 1.0.0
   year: 2026
-  license: MIT
+  license: MPL-2.0
   url: "https://github.com/olaflaitinen/discretus"
   authors:
     - family-names: "Laitinen Imanov"

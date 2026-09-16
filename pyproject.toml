@@ -8,12 +8,12 @@ version = "1.0.0"
 description = "A rigorous, production-grade library for Discrete Mathematics in pure Python."
 readme = "README.md"
 requires-python = ">=3.9"
-license = { text = "MIT" }
+license = { text = "MPL-2.0" }
 authors = [
-    { name = "Olaf Yunus Laitinen Imanov", email = "yunus.imanov@metropolia.fi" },
+    { name = "Olaf Yunus Laitinen Imanov", email = "yimanov@student.uef.fi" },
 ]
 maintainers = [
-    { name = "Olaf Yunus Laitinen Imanov", email = "yunus.imanov@metropolia.fi" },
+    { name = "Olaf Yunus Laitinen Imanov", email = "yimanov@student.uef.fi" },
 ]
 keywords = [
     "discrete mathematics",
@@ -32,7 +32,7 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Intended Audience :: Education",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",

@@ -60,6 +60,8 @@ A change is mergeable when all of the following hold.
 
 ## Code style
 
+- Every source file starts with the three line Mozilla Public License 2.0
+  notice, because the license applies per file.
 - Format with `black` at the configured line length and sort imports with
   `isort` using the black profile.
 - Annotate every public function and method.
