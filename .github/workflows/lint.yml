@@ -95,12 +95,23 @@ jobs:
           import sys
           import unicodedata
 
-          SUFFIXES = {".py", ".md", ".txt", ".cfg", ".ini", ".toml", ".yml", ".yaml"}
-          FORBIDDEN_DASHES = {"—", "–"}
+          SUFFIXES = {
+              ".py", ".md", ".txt", ".cfg", ".ini", ".toml", ".yml", ".yaml",
+              ".json", ".jsonc", ".example",
+          }
+          EXTRA_NAMES = {
+              ".mailmap", ".gitmessage", ".codespellrc", ".shellcheckrc",
+              "Dockerfile", "Makefile",
+          }
+          # Written as code points so that this file does not itself
+          # contain the characters it rejects.
+          FORBIDDEN_DASHES = {chr(0x2014), chr(0x2013)}
           failures = []
 
           for path in sorted(pathlib.Path(".").rglob("*")):
-              if not path.is_file() or path.suffix not in SUFFIXES:
+              if not path.is_file():
+                  continue
+              if path.suffix not in SUFFIXES and path.name not in EXTRA_NAMES:
                   continue
               if ".git" in path.parts or "_build" in path.parts:
                   continue
