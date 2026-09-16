@@ -1,12 +1,87 @@
+# Issue template configuration for discretus.
+#
+# This file controls the chooser a reporter sees before they pick a template.
+# It does two things: it decides whether an issue may be opened without a
+# template, and it lists the links offered alongside the templates.
+#
+# The intent is to route each kind of report to the place where it can be
+# answered, which is not always the issue tracker. A usage question answered
+# in a discussion helps the next person who searches for it; the same
+# question in a closed issue does not. A security report in a public issue
+# cannot be unpublished.
+
+# Every issue must use one of the templates. The templates are long, and that
+# is deliberate: a complete report is triaged in one pass and an incomplete
+# one takes several rounds of the same questions. Both templates mark the
+# required sections and say that the rest may be deleted, so a small report
+# stays small.
+#
+# The one case this setting makes awkward is a maintainer opening a tracking
+# issue for their own work. That is accepted, because the alternative is a
+# blank issue form that receives reports with no version and no reproduction.
 blank_issues_enabled: false
 
 contact_links:
-  - name: Documentation
+  - name: Documentation and API reference
     url: https://discretus.readthedocs.io
-    about: Read the API reference and the tutorials before filing an issue.
-  - name: Question or design discussion
+    about: >-
+      Start here for how a routine is meant to behave. Every reference page
+      states the mathematical basis of its package, the routines grouped by
+      subject with their asymptotic complexity, a worked example, and a table
+      of the exceptions each routine raises and the condition that triggers
+      it. A behaviour that looks wrong is often a documented convention, for
+      instance that the zero polynomial has degree minus one or that the
+      empty relation is vacuously transitive.
+
+  - name: Tutorials
+    url: https://discretus.readthedocs.io/en/latest/tutorials/getting_started.html
+    about: >-
+      Six tutorials that develop one domain each, with the mathematics stated
+      next to the code that computes it. The getting started tutorial solves
+      one problem four times, with sets, logic, graphs, and algebra, and it
+      is the fastest way to meet the conventions the library relies on.
+
+  - name: Usage question or design discussion
     url: https://github.com/olaflaitinen/discretus/discussions
-    about: Ask usage questions and propose designs before implementing them.
-  - name: Security report
+    about: >-
+      Ask how to do something, propose a design before implementing it, or
+      share what you built. A discussion is the right place for anything that
+      is not yet a defect report or a specific proposal, and for any question
+      whose answer will help the next person who asks it.
+
+  - name: Security vulnerability
     url: https://github.com/olaflaitinen/discretus/blob/main/SECURITY.md
-    about: Report a vulnerability privately instead of opening an issue.
+    about: >-
+      Do not open a public issue. Report privately to
+      yimanov@student.uef.fi with the subject line "discretus security
+      report", or through the forge's private advisory mechanism. The policy
+      states the supported versions, what to include, the response and
+      coordinated disclosure timelines, and which classes of problem are in
+      scope. Note that the cryptographic primitives are teaching
+      implementations and their unsuitability for real secrets is documented
+      rather than a vulnerability.
+
+  - name: Contributing guide
+    url: https://github.com/olaflaitinen/discretus/blob/main/CONTRIBUTING.md
+    about: >-
+      Read before opening a pull request. It covers the development setup,
+      the ten point quality gate, the code style decisions that tools cannot
+      enforce, the docstring format, the mathematical conventions the library
+      is consistent about, the four kinds of test the suite uses, and a ten
+      step procedure for adding a new algorithm.
+
+  - name: Code of conduct
+    url: https://github.com/olaflaitinen/discretus/blob/main/CODE_OF_CONDUCT.md
+    about: >-
+      The Contributor Covenant 2.1, plus the project's own sections on how a
+      report is handled, what to include in one, where to report when the
+      report concerns the maintainer, and why firm technical disagreement is
+      welcome and is not a conduct matter.
+
+  - name: Changelog
+    url: https://github.com/olaflaitinen/discretus/blob/main/CHANGELOG.md
+    about: >-
+      Check whether the behaviour you are reporting already changed. Entries
+      are written from the point of view of somebody upgrading, and the
+      Unreleased section lists what is merged but not yet published, which
+      can be installed from the default branch.
