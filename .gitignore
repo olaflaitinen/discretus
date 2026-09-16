@@ -1,0 +1,45 @@
+# Byte compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution and packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+wheels/
+pip-wheel-metadata/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.hypothesis/
+.tox/
+.nox/
+
+# Type checking and linting caches
+.mypy_cache/
+.ruff_cache/
+.pylint.d/
+
+# Documentation builds
+docs/_build/
+docs/api/_autosummary/
+
+# Benchmarks
+.asv/
+
+# Editors and operating systems
+.idea/
+.vscode/
+*.swp
+.DS_Store

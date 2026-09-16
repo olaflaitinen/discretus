@@ -1,0 +1,25 @@
+services:
+  library:
+    build:
+      context: .
+      target: base
+    image: discretus:latest
+    command: python -c "import discretus; print(discretus.__version__)"
+
+  tests:
+    build:
+      context: .
+      target: dev
+    image: discretus:dev
+    command: python -m pytest tests
+    volumes:
+      - .:/app
+
+  docs:
+    build:
+      context: .
+      target: dev
+    image: discretus:dev
+    command: sphinx-build -b html docs docs/_build/html
+    volumes:
+      - .:/app

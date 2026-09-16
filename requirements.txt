@@ -1,0 +1,5 @@
+# Runtime requirements for discretus.
+#
+# The computational core is pure Python and depends only on the standard
+# library. This file is intentionally free of pinned third party packages so
+# that the library installs in restricted environments without a compiler.

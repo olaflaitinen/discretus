@@ -1,0 +1,26 @@
+[MAIN]
+py-version = 3.9
+jobs = 0
+ignore = .git,.venv,build,dist,docs
+suggestion-mode = yes
+
+[MESSAGES CONTROL]
+disable =
+    too-few-public-methods,
+    too-many-arguments,
+    too-many-locals,
+    too-many-branches,
+    too-many-return-statements,
+    duplicate-code,
+    invalid-name
+
+[FORMAT]
+max-line-length = 88
+max-module-lines = 1200
+
+[BASIC]
+good-names = a,b,c,d,e,f,g,h,i,j,k,m,n,p,q,r,s,t,u,v,w,x,y,z,ax,fn,op,id
+
+[DESIGN]
+max-attributes = 12
+max-public-methods = 40

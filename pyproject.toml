@@ -1,0 +1,132 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "discretus"
+version = "1.0.0"
+description = "A rigorous, production-grade library for Discrete Mathematics in pure Python."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [
+    { name = "Olaf Yunus Laitinen Imanov", email = "yunus.imanov@metropolia.fi" },
+]
+maintainers = [
+    { name = "Olaf Yunus Laitinen Imanov", email = "yunus.imanov@metropolia.fi" },
+]
+keywords = [
+    "discrete mathematics",
+    "set theory",
+    "logic",
+    "combinatorics",
+    "graph theory",
+    "number theory",
+    "recurrence relations",
+    "abstract algebra",
+    "sat solver",
+    "finite fields",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Education",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Education",
+    "Typing :: Typed",
+]
+dependencies = []
+
+[project.optional-dependencies]
+viz = [
+    "matplotlib>=3.5",
+    "graphviz>=0.20",
+]
+docs = [
+    "sphinx>=7.0",
+    "myst-parser>=2.0",
+    "furo>=2024.1.29",
+    "sphinx-copybutton>=0.5",
+]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "hypothesis>=6.90",
+    "black>=24.1",
+    "isort>=5.13",
+    "mypy>=1.8",
+    "ruff>=0.3",
+    "pylint>=3.0",
+    "bandit>=1.7",
+    "pre-commit>=3.6",
+    "nox>=2024.3.2",
+]
+
+[project.urls]
+Homepage = "https://github.com/olaflaitinen/discretus"
+Documentation = "https://discretus.readthedocs.io"
+Repository = "https://github.com/olaflaitinen/discretus"
+Changelog = "https://github.com/olaflaitinen/discretus/blob/main/CHANGELOG.md"
+Issues = "https://github.com/olaflaitinen/discretus/issues"
+
+[project.scripts]
+discretus = "discretus.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["discretus*"]
+exclude = ["tests*", "docs*", "examples*", "benchmarks*", "scripts*"]
+
+[tool.setuptools.package-data]
+discretus = ["py.typed"]
+
+[tool.black]
+line-length = 88
+target-version = ["py39"]
+
+[tool.isort]
+profile = "black"
+line_length = 88
+known_first_party = ["discretus"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "C4", "SIM", "RET"]
+ignore = ["E501", "SIM108"]
+
+[tool.mypy]
+python_version = "3.9"
+warn_unused_configs = true
+disallow_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+strict_equality = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.coverage.run]
+branch = true
+source = ["discretus"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]

@@ -1,0 +1,23 @@
+include LICENSE
+include README.md
+include CHANGELOG.md
+include CITATION.cff
+include AUTHORS.md
+include CODE_OF_CONDUCT.md
+include CONTRIBUTING.md
+include SECURITY.md
+include py.typed
+include requirements*.txt
+include constraints.txt
+
+recursive-include discretus py.typed
+recursive-include docs *.md *.py *.css *.txt Makefile make.bat
+recursive-include examples *.py
+recursive-include tests *.py
+
+exclude .pre-commit-config.yaml
+exclude noxfile.py
+exclude tox.ini
+
+prune docs/_build
+global-exclude __pycache__ *.py[cod]
