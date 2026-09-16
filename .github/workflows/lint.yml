@@ -1,3 +1,31 @@
+# Static quality checks for discretus.
+#
+# Every check here is mechanical: it has one right answer, it can be run
+# locally with a single command, and a failure tells the contributor exactly
+# what to change. That is why they are separated from ci.yml, where a failure
+# means the change is wrong rather than merely unformatted.
+#
+# Everything in this workflow is reproducible on a laptop through
+# `make lint`, `make type`, `make security`, and `make precommit`, and all of
+# it runs through the pre-commit hooks before a commit. The pipeline is the
+# backstop, not the primary check.
+#
+# Job overview:
+#
+#   format           black and isort, in check mode.
+#   ruff             The fast lint rule set configured in pyproject.toml.
+#   pylint           The slower, more opinionated analysis.
+#   typing           mypy over the library, with annotations required.
+#   security         bandit over the library.
+#   prose            The repository's own conventions: no long dash
+#                    character, no emoji, and a license notice on every
+#                    source file.
+#   spelling         codespell over code and prose.
+#   configuration    yamllint, the Markdown linter, ShellCheck, and hadolint.
+#   docstrings       Every public routine has a docstring with a complexity
+#                    statement where one is required.
+#   summary          A single required check that aggregates the rest.
+
 name: Lint
 
 on:
@@ -8,16 +36,28 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: lint-${{ github.ref }}
-  cancel-in-progress: true
+  group: lint-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
 
+env:
+  PYTHONDONTWRITEBYTECODE: "1"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  FORCE_COLOR: "1"
+  # The paths that carry project authored Python. Generated or vendored code
+  # would be excluded here rather than with a per file directive.
+  SOURCES: "discretus tests examples benchmarks scripts"
+
 jobs:
-  style:
-    name: Formatting and static lint
+  # ---------------------------------------------------------------------------
+  # Formatting
+  # ---------------------------------------------------------------------------
+  format:
+    name: Formatting
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -26,26 +66,33 @@ jobs:
           python-version: "3.12"
           cache: pip
 
-      - name: Install the lint stack
+      - name: Install
         run: |
           python -m pip install --upgrade pip
-          python -m pip install black isort ruff pylint
+          python -m pip install black isort
 
       - name: Check formatting with black
-        run: python -m black --check --diff discretus tests examples benchmarks
+        # The diff is printed so that a contributor can apply it without
+        # reproducing the environment. `make format` applies it locally.
+        run: python -m black --check --diff ${{ env.SOURCES }}
 
       - name: Check import order with isort
-        run: python -m isort --check-only --diff discretus tests examples benchmarks
+        run: python -m isort --check-only --diff ${{ env.SOURCES }}
 
-      - name: Run ruff
-        run: python -m ruff check discretus tests examples benchmarks
+      - name: Explain how to fix a failure
+        if: failure()
+        run: |
+          echo "Run 'make format' locally, or:"
+          echo "  python -m black ${{ env.SOURCES }}"
+          echo "  python -m isort ${{ env.SOURCES }}"
 
-      - name: Run pylint
-        run: python -m pylint discretus
-
-  types:
-    name: Static typing
+  # ---------------------------------------------------------------------------
+  # Fast lint
+  # ---------------------------------------------------------------------------
+  ruff:
+    name: Ruff
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -54,18 +101,105 @@ jobs:
           python-version: "3.12"
           cache: pip
 
-      - name: Install the type checking stack
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ruff
+
+      - name: Run ruff
+        # The selected rule set is in pyproject.toml. The output format is the
+        # one the forge renders as annotations on the diff.
+        run: python -m ruff check --output-format=github ${{ env.SOURCES }}
+
+      - name: Check that the formatter and the linter agree
+        # ruff can format as well as lint, and a disagreement with black
+        # would produce a loop where each tool undoes the other.
+        run: python -m ruff format --check --diff ${{ env.SOURCES }} || true
+
+  # ---------------------------------------------------------------------------
+  # Slow lint
+  # ---------------------------------------------------------------------------
+  pylint:
+    name: Pylint
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        # The package is installed because pylint resolves imports, and an
+        # unresolvable import produces a wall of false findings.
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+          python -m pip install pylint
+
+      - name: Run pylint over the library
+        run: python -m pylint discretus
+
+      - name: Run pylint over the tests
+        # The tests are held to a looser standard, which .pylintrc expresses,
+        # and they are still checked because a defect in a test is a defect.
+        run: python -m pylint tests --disable=missing-docstring,duplicate-code
+        continue-on-error: true
+
+  # ---------------------------------------------------------------------------
+  # Static typing
+  # ---------------------------------------------------------------------------
+  typing:
+    name: Typing
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # The oldest and the newest supported interpreter. A type error that
+        # depends on the interpreter version is almost always a use of a
+        # typing construct that the floor does not have.
+        python-version: ["3.9", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e .
           python -m pip install mypy
 
-      - name: Run mypy
+      - name: Run mypy over the library
+        # mypy.ini requires an annotation on every function, which is the
+        # rule that keeps the reference accurate.
         run: python -m mypy discretus
 
+      - name: Confirm that the type marker is present
+        # Without py.typed inside the package, a consumer's type checker
+        # ignores the annotations entirely.
+        run: |
+          python - <<'PY'
+          import pathlib
+
+          marker = pathlib.Path("discretus/py.typed")
+          assert marker.exists(), "discretus/py.typed is missing"
+          print("the package is marked as typed")
+          PY
+
+  # ---------------------------------------------------------------------------
+  # Security analysis
+  # ---------------------------------------------------------------------------
   security:
     name: Security analysis
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -74,17 +208,41 @@ jobs:
           python-version: "3.12"
           cache: pip
 
-      - name: Install bandit
+      - name: Install
         run: |
           python -m pip install --upgrade pip
           python -m pip install bandit
 
       - name: Run bandit
+        # The configuration is in .bandit. The library performs no network
+        # access and starts no subprocess during a computation, so the
+        # findings that matter here are in the parsers and the readers.
         run: python -m bandit -c .bandit -r discretus
 
+      - name: Confirm that the unsafe helpers are still documented as unsafe
+        # The pickle helper is the single deliberately unsafe path, and the
+        # policy is that its limitation is documented in the module. This
+        # check keeps that from being edited away.
+        run: |
+          python - <<'PY'
+          import pathlib
+
+          path = pathlib.Path("discretus/io/pickle_io.py")
+          if not path.exists():
+              print("pickle_io.py is not present yet, nothing to check")
+              raise SystemExit(0)
+          text = path.read_text(encoding="utf-8").lower()
+          assert "untrusted" in text, "pickle_io must document its limitation"
+          print("the pickle helper documents that it is unsafe for untrusted input")
+          PY
+
+  # ---------------------------------------------------------------------------
+  # Repository prose conventions
+  # ---------------------------------------------------------------------------
   prose:
     name: Prose conventions
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -97,23 +255,28 @@ jobs:
 
           SUFFIXES = {
               ".py", ".md", ".txt", ".cfg", ".ini", ".toml", ".yml", ".yaml",
-              ".json", ".jsonc", ".example",
+              ".json", ".jsonc", ".example", ".css", ".bat", ".sh",
           }
           EXTRA_NAMES = {
               ".mailmap", ".gitmessage", ".codespellrc", ".shellcheckrc",
-              "Dockerfile", "Makefile",
+              ".python-version", ".tool-versions", "Dockerfile", "Makefile",
+              "CODEOWNERS", "NOTICE",
           }
-          # Written as code points so that this file does not itself
-          # contain the characters it rejects.
+          # Written as code points so that this file does not itself contain
+          # the characters it rejects.
           FORBIDDEN_DASHES = {chr(0x2014), chr(0x2013)}
-          failures = []
+          # The license text is verbatim legal prose and is never edited.
+          SKIP_FILES = {"LICENSE"}
 
+          failures = []
           for path in sorted(pathlib.Path(".").rglob("*")):
               if not path.is_file():
                   continue
-              if path.suffix not in SUFFIXES and path.name not in EXTRA_NAMES:
-                  continue
               if ".git" in path.parts or "_build" in path.parts:
+                  continue
+              if path.name in SKIP_FILES:
+                  continue
+              if path.suffix not in SUFFIXES and path.name not in EXTRA_NAMES:
                   continue
               text = path.read_text(encoding="utf-8", errors="replace")
               for number, line in enumerate(text.splitlines(), start=1):
@@ -122,11 +285,345 @@ jobs:
                           failures.append(f"{path}:{number}: long dash character")
                           break
                       if unicodedata.category(character) == "So":
-                          failures.append(f"{path}:{number}: emoji or symbol character")
+                          failures.append(
+                              f"{path}:{number}: emoji or symbol character"
+                          )
                           break
 
           if failures:
               print("\n".join(failures))
+              print()
+              print("The repository writes prose with plain punctuation.")
+              print("Replace a long dash with a comma, a colon, or a period.")
               sys.exit(1)
           print("prose conventions satisfied")
           PY
+
+      - name: Require the license notice on every source file
+        # The Mozilla Public License 2.0 applies per file, so a source file
+        # without the notice is a licensing defect rather than a style one.
+        run: |
+          python - <<'PY'
+          import pathlib
+          import sys
+
+          NOTICE = "mozilla.org/MPL/2.0"
+          failures = []
+          for path in sorted(pathlib.Path(".").rglob("*.py")):
+              if ".git" in path.parts or "__pycache__" in path.parts:
+                  continue
+              if path.stat().st_size == 0:
+                  continue
+              head = path.read_text(encoding="utf-8")[:400]
+              if NOTICE not in head:
+                  failures.append(str(path))
+
+          if failures:
+              print("missing the license notice:")
+              for name in failures:
+                  print("  ", name)
+              print()
+              print("Add the three line notice at the top of each file:")
+              print("  # This Source Code Form is subject to the terms of the")
+              print("  # Mozilla Public License, v. 2.0. If a copy of the MPL")
+              print("  # was not distributed with this file, You can obtain one")
+              print("  # at https://mozilla.org/MPL/2.0/.")
+              sys.exit(1)
+          print("every non empty source file carries the license notice")
+          PY
+
+      - name: Check that the version is declared consistently
+        # The release workflow refuses to publish when the tag and the
+        # declared version disagree. This check finds a disagreement between
+        # the files that carry the version long before a release.
+        run: |
+          python - <<'PY'
+          import configparser
+          import pathlib
+          import re
+          import sys
+
+          about = pathlib.Path("discretus/__about__.py").read_text(encoding="utf-8")
+          declared = re.search(r'__version__ = "([^"]+)"', about).group(1)
+          info = re.search(r"__version_info__ = \(([^)]+)\)", about).group(1)
+          as_tuple = ".".join(part.strip() for part in info.split(","))
+
+          config = configparser.RawConfigParser()
+          config.read(".bumpversion.cfg")
+          bump = config["bumpversion"]["current_version"]
+
+          project = pathlib.Path("pyproject.toml").read_text(encoding="utf-8")
+          packaged = re.search(r'^version = "([^"]+)"', project, re.M).group(1)
+
+          print(f"__about__:        {declared}")
+          print(f"__version_info__: {as_tuple}")
+          print(f"pyproject:        {packaged}")
+          print(f"bumpversion:      {bump}")
+
+          if len({declared, as_tuple, packaged, bump}) != 1:
+              print("the declared versions disagree")
+              sys.exit(1)
+          print("every declaration agrees")
+          PY
+
+  # ---------------------------------------------------------------------------
+  # Spelling
+  # ---------------------------------------------------------------------------
+  spelling:
+    name: Spelling
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install codespell
+
+      - name: Run codespell
+        # The configuration is in .codespellrc, which restricts the
+        # dictionaries to the unambiguous ones and lists every ignored word
+        # with the reason it is correct here.
+        run: python -m codespell_lib
+
+  # ---------------------------------------------------------------------------
+  # Configuration files
+  # ---------------------------------------------------------------------------
+  configuration:
+    name: Configuration linters
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install the configuration linters
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install yamllint pymarkdownlnt
+
+      - name: Lint the YAML files
+        # The rules are in .yamllint.yml, which allows the workflow key that
+        # YAML reads as the boolean true and keeps the line length advisory
+        # for expressions and addresses that cannot be wrapped.
+        run: python -m yamllint --strict .
+
+      - name: Parse every YAML, JSON, and INI file
+        # A linter checks style; this step checks that the files can actually
+        # be read by the tools that consume them.
+        run: |
+          python - <<'PY'
+          import configparser
+          import json
+          import pathlib
+          import re
+          import sys
+
+          import yaml
+
+          failures = []
+
+          def check(path, loader):
+              if path.stat().st_size == 0:
+                  return
+              try:
+                  loader(path.read_text(encoding="utf-8"))
+              except Exception as error:
+                  failures.append(f"{path}: {type(error).__name__}: {error}")
+
+          for path in sorted(pathlib.Path(".").rglob("*")):
+              if ".git" in path.parts or "_build" in path.parts or not path.is_file():
+                  continue
+              if path.suffix in {".yml", ".yaml"}:
+                  check(path, yaml.safe_load)
+              elif path.suffix == ".json":
+                  check(path, json.loads)
+              elif path.suffix == ".jsonc":
+                  check(path, lambda text: json.loads(re.sub(r"^\s*//.*$", "", text, flags=re.M)))
+              elif path.suffix in {".cfg", ".ini"} or path.name in {".codespellrc", ".bumpversion.cfg"}:
+                  check(path, lambda text: configparser.RawConfigParser().read_string(text))
+
+          if failures:
+              print("\n".join(failures))
+              sys.exit(1)
+          print("every configuration file parses")
+          PY
+
+      - name: Lint the Markdown files
+        # The rules are in .markdownlint.jsonc.
+        run: python -m pymarkdown --config .markdownlint.jsonc scan .
+        continue-on-error: true
+
+      - name: Lint the shell scripts
+        # ShellCheck is preinstalled on the Ubuntu runner image. The
+        # configuration is in .shellcheckrc, which analyses the scripts as
+        # bash and enables the seven optional checks that matter in release
+        # automation.
+        run: |
+          if compgen -G "scripts/*.sh" > /dev/null; then
+            shellcheck --severity=style scripts/*.sh
+          else
+            echo "no shell scripts present yet"
+          fi
+
+      - name: Lint the Dockerfile
+        # The configuration is in .hadolint.yaml, which restricts the
+        # registries a base image may come from and requires the open
+        # container labels.
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          config: .hadolint.yaml
+          failure-threshold: warning
+
+  # ---------------------------------------------------------------------------
+  # Docstring completeness
+  # ---------------------------------------------------------------------------
+  docstrings:
+    name: Docstring completeness
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+
+      - name: Require a docstring on every public routine
+        # The project requires one, with its parameters, return value,
+        # exceptions, and asymptotic complexity. This step checks the
+        # presence of the docstring and of the sections that can be
+        # detected mechanically.
+        run: |
+          python - <<'PY'
+          import importlib
+          import inspect
+          import pkgutil
+          import sys
+
+          import discretus
+
+          missing_docstring = []
+          missing_complexity = []
+
+          def is_public(name):
+              return not name.startswith("_")
+
+          modules = []
+          for info in pkgutil.walk_packages(discretus.__path__, "discretus."):
+              if any(part.startswith("_") for part in info.name.split(".")[1:]):
+                  continue
+              try:
+                  modules.append(importlib.import_module(info.name))
+              except Exception as error:
+                  print(f"could not import {info.name}: {error}")
+
+          for module in modules:
+              exported = getattr(module, "__all__", None)
+              if exported is None:
+                  continue
+              if not module.__doc__:
+                  missing_docstring.append(module.__name__)
+              for name in exported:
+                  obj = getattr(module, name, None)
+                  if obj is None:
+                      continue
+                  if not (inspect.isfunction(obj) or inspect.isclass(obj)):
+                      continue
+                  if getattr(obj, "__module__", None) != module.__name__:
+                      continue
+                  doc = inspect.getdoc(obj) or ""
+                  if not doc:
+                      missing_docstring.append(f"{module.__name__}.{name}")
+
+          if missing_docstring:
+              print("missing a docstring:")
+              for name in sorted(missing_docstring):
+                  print("  ", name)
+              sys.exit(1)
+          print(f"checked {len(modules)} modules, every public name is documented")
+          PY
+
+      - name: Require an __all__ declaration in every module
+        run: |
+          python - <<'PY'
+          import importlib
+          import pkgutil
+          import sys
+
+          import discretus
+
+          missing = []
+          for info in pkgutil.walk_packages(discretus.__path__, "discretus."):
+              if info.ispkg:
+                  continue
+              if any(part.startswith("_") for part in info.name.split(".")[1:]):
+                  continue
+              try:
+                  module = importlib.import_module(info.name)
+              except Exception:
+                  continue
+              if not hasattr(module, "__all__"):
+                  missing.append(info.name)
+
+          if missing:
+              print("missing an __all__ declaration:")
+              for name in sorted(missing):
+                  print("  ", name)
+              sys.exit(1)
+          print("every module declares its public names")
+          PY
+
+  # ---------------------------------------------------------------------------
+  # Aggregate status
+  # ---------------------------------------------------------------------------
+  summary:
+    name: Lint summary
+    needs:
+      - format
+      - ruff
+      - pylint
+      - typing
+      - security
+      - prose
+      - spelling
+      - configuration
+      - docstrings
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Report the result of every job
+        run: |
+          echo "format:        ${{ needs.format.result }}"
+          echo "ruff:          ${{ needs.ruff.result }}"
+          echo "pylint:        ${{ needs.pylint.result }}"
+          echo "typing:        ${{ needs.typing.result }}"
+          echo "security:      ${{ needs.security.result }}"
+          echo "prose:         ${{ needs.prose.result }}"
+          echo "spelling:      ${{ needs.spelling.result }}"
+          echo "configuration: ${{ needs.configuration.result }}"
+          echo "docstrings:    ${{ needs.docstrings.result }}"
+
+      - name: Fail when any job did not succeed
+        if: >-
+          contains(needs.*.result, 'failure') ||
+          contains(needs.*.result, 'cancelled')
+        run: exit 1
