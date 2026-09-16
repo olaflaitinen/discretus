@@ -18,7 +18,14 @@
 //     asv run v1.0.0..main --config benchmarks/asv.conf.json
 //     asv continuous main HEAD --config benchmarks/asv.conf.json
 //     asv compare v1.0.0 main --config benchmarks/asv.conf.json
-//     asv publish && asv preview
+//     asv publish --config benchmarks/asv.conf.json
+//     asv preview --config benchmarks/asv.conf.json
+//
+// The two tools share their declarations. Every benchmark is declared once,
+// with the decorator in benchmarks/__init__.py, and the adapter in
+// benchmarks/asv_suite/suite.py generates the discoverable classes this tool
+// needs from that single declaration. Nothing is measured here that the
+// harness does not also measure, and nothing is declared twice.
 //
 // Note that airspeed velocity is an optional development dependency,
 // installed through the pip section of environment.yml rather than through
@@ -26,10 +33,17 @@
 // use discretus, and nothing in the library imports it.
 //
 // Comments are permitted here because airspeed velocity strips them before
-// parsing, which is the format its own generated template uses. The
-// configuration linting job in the lint workflow strips them in the same way
-// before validating this file.
+// parsing, which is the format its own generated template uses. They must
+// occupy a whole line: the configuration linting job in the lint workflow
+// strips whole line comments in the same way before validating this file,
+// and a trailing comment would therefore survive the strip and break the
+// parse. Keeping the rule identical in both places means a file that parses
+// locally parses in the pipeline.
 {
+    // -----------------------------------------------------------------
+    // Identity
+    // -----------------------------------------------------------------
+
     // The version of the configuration format. One is current.
     "version": 1,
 
@@ -38,6 +52,15 @@
 
     // Where a reader of the report is sent for the project itself.
     "project_url": "https://github.com/olaflaitinen/discretus",
+
+    // How a commit hash in the report links back to the forge. The trailing
+    // slash matters: the tool appends the hash to this string without
+    // inserting a separator.
+    "show_commit_url": "https://github.com/olaflaitinen/discretus/commit/",
+
+    // -----------------------------------------------------------------
+    // What to measure
+    // -----------------------------------------------------------------
 
     // The repository to measure. The path is relative to this file, so the
     // two levels up reach the repository root. An absolute path or a remote
@@ -57,6 +80,29 @@
     // The version control system. Naming it explicitly saves a probe.
     "dvcs": "git",
 
+    // Where the benchmark modules live, relative to this file.
+    //
+    // This points at the adapter directory rather than at the suite itself,
+    // and the reason is worth recording because the obvious alternative
+    // fails. Airspeed velocity imports every module it finds under this
+    // directory as a top level module, with the directory placed on the
+    // import path. The bench modules reach the harness through relative
+    // imports, which require a parent package, so importing them that way
+    // raises an import error on every one of them. Pointing this at the
+    // benchmarks directory would therefore discover nothing and report
+    // seven import failures.
+    //
+    // The adapter avoids the problem rather than working around it. It is
+    // alone in its directory, so it is the only module imported here, and
+    // it puts the repository root on the import path and then imports the
+    // harness by its proper name. The harness imports the bench modules as
+    // the package submodules they are.
+    "benchmark_dir": "./asv_suite",
+
+    // -----------------------------------------------------------------
+    // Environments
+    // -----------------------------------------------------------------
+
     // How the environments are created. The virtualenv backend is used
     // rather than conda, because the library has no compiled parts and no
     // system dependencies, so the lighter backend is sufficient and is far
@@ -69,8 +115,20 @@
     // that has to download the interpreter's own build tooling.
     "install_timeout": 600,
 
-    // How a commit hash in the report links back to the forge.
-    "show_commit_url": "https://github.com/olaflaitinen/discretus/commit/",
+    // The channels to use if the conda backend is selected on the command
+    // line. Recorded rather than omitted so that the override works without
+    // a second flag, and ordered with the community channel first because
+    // that is where the current interpreter builds are.
+    "conda_channels": ["conda-forge", "defaults"],
+
+    // The environment file to use if the conda backend is selected. Left
+    // unset, because environment.yml at the repository root describes a
+    // development environment, including the documentation and linting
+    // tools, and installing all of that into every measured commit would
+    // multiply the runtime of a historical run for no benefit. The
+    // dependency matrix above is the right place to name what a measurement
+    // actually needs.
+    "conda_environment_file": null,
 
     // The interpreter versions to measure. The oldest and the newest
     // supported versions are both listed, because the library's performance
@@ -107,11 +165,22 @@
             // The library reads its configuration from the environment.
             // Fixing the seed here makes every randomized routine
             // reproducible across the whole historical run, which is what
-            // makes two commits comparable at all.
+            // makes two commits comparable at all. The value is the one the
+            // harness uses as its base seed, so a measurement taken here
+            // and a measurement taken through the harness see the same
+            // inputs.
             "DISCRETUS_DEFAULT_SEED": ["20260115"],
             // Strict validation is left on, because it is the default a user
-            // gets and therefore the configuration worth measuring.
-            "DISCRETUS_STRICT_VALIDATION": ["true"]
+            // gets and therefore the configuration worth measuring. Turning
+            // it off would make the axiom verification benchmarks measure
+            // nothing, and those are among the few routines whose cost a
+            // user is likely to be surprised by.
+            "DISCRETUS_STRICT_VALIDATION": ["true"],
+            // Deterministic output ordering is also a default, and it is
+            // the reason several routines sort where a less careful library
+            // would not. Measuring with it off would understate the cost of
+            // the library a user actually installs.
+            "DISCRETUS_DETERMINISTIC": ["true"]
         },
         "env_nobuild": {}
     },
@@ -133,11 +202,44 @@
     // change to a value rather than a change to the structure.
     "include": [],
 
-    // Where the benchmark modules live, relative to this file. The suite is
-    // this directory itself: airspeed velocity discovers the bench modules
-    // by name, and the harness in __init__.py discovers the same modules
-    // through its own list, so the two tools measure the same code.
-    "benchmark_dir": ".",
+    // -----------------------------------------------------------------
+    // Build and install
+    // -----------------------------------------------------------------
+
+    // The commands used to build and install the package into each
+    // environment. They are stated explicitly rather than left to the
+    // default, because the default assumes a setup.py invocation and this
+    // project builds through pyproject.toml.
+    //
+    // The wheel is built once per commit and cached, then installed into
+    // every environment for that commit, which is why the build command
+    // writes into the build cache directory and the install command reads
+    // the wheel back out of it.
+    "build_command": [
+        "python -m pip install build",
+        "python -m build --wheel -o {build_cache_dir} {build_dir}"
+    ],
+    "install_command": [
+        "python -m pip install {wheel_file}"
+    ],
+
+    // The uninstall is allowed to fail, which is what the return code
+    // prefix expresses. It runs before the first install into a fresh
+    // environment, where there is nothing to uninstall, and treating that
+    // as an error would abort every run.
+    "uninstall_command": [
+        "return-code=any python -m pip uninstall -y discretus"
+    ],
+
+    // Whether to cache the built package between commits. Enabled with a
+    // small cache, because building a pure Python package is cheap and the
+    // cache mostly saves the environment resolution rather than a
+    // compilation. A larger cache would mostly consume disk.
+    "build_cache_size": 4,
+
+    // -----------------------------------------------------------------
+    // Where output goes
+    // -----------------------------------------------------------------
 
     // Where the created environments are cached. Kept out of the repository
     // by .gitignore, because an environment directory is large and is
@@ -149,18 +251,23 @@
     // regenerated, while a lost measurement means re running the history.
     "results_dir": "../.asv/results",
 
-    // Where the browsable report is generated.
+    // Where the browsable report is generated. This one is genuinely
+    // disposable, and the publish command rewrites it from the results.
     "html_dir": "../.asv/html",
 
     // Length of the commit hashes shown in the report. Eight is enough to be
     // unambiguous in a repository of this size and short enough to read.
     "hash_length": 8,
 
-    // Whether to cache the built package between commits. Enabled with a
-    // small cache, because building a pure Python package is cheap and the
-    // cache mostly saves the environment resolution rather than a
-    // compilation.
-    "build_cache_size": 4,
+    // Plugins to load. None are needed: the suite uses the plain timing
+    // benchmarks that airspeed velocity provides, and the harness in
+    // benchmarks/__init__.py provides the reporting that a plugin would
+    // otherwise add.
+    "plugins": [],
+
+    // -----------------------------------------------------------------
+    // Limits
+    // -----------------------------------------------------------------
 
     // The default time limit for a single benchmark, in seconds. The suite
     // contains routines that are exponential by nature, namely exact graph
@@ -169,28 +276,140 @@
     // limit. A benchmark that exceeds it is reported as a failure rather
     // than allowed to occupy a runner, which is the right outcome: it means
     // either a regression or a size that was chosen too generously.
+    //
+    // The adapter repeats this value as a class attribute, because a
+    // generated class does not inherit the configured default. The two are
+    // kept in step by hand, and a disagreement between them is harmless in
+    // one direction only: a smaller value on the class wins.
     "default_benchmark_timeout": 120,
 
-    // Regression detection. The first entry applies to every benchmark and
-    // says that a change is only reported when it exceeds a factor of one
-    // and a half, which is well outside the resolution of a shared machine.
-    // A tighter threshold would fill the report with noise and train a
-    // reader to ignore it.
+    // -----------------------------------------------------------------
+    // Regression detection
+    // -----------------------------------------------------------------
+
+    // The empty key applies to every benchmark and says that a change is
+    // only reported when it exceeds a factor of one and a half, which is
+    // well outside the resolution of a shared machine. A tighter threshold
+    // would fill the report with noise and train a reader to ignore it.
     //
-    // The per benchmark entries below are tighter, and each is tighter for a
-    // reason: these are the routines whose asymptotic behaviour the
-    // reference makes a specific claim about, so a smaller change is worth
-    // investigating.
+    // The remaining keys are tighter, at a factor of one fifth, and each is
+    // tighter for the same reason: the reference makes a specific
+    // asymptotic claim about that routine, so a smaller change is worth
+    // investigating even though it is closer to the noise floor. They are
+    // the routines a user is most likely to have in a loop, and the ones
+    // where a change of implementation strategy, rather than a change of
+    // constant factor, is the likely cause of a step in the curve.
+    //
+    // The identifiers are those the adapter generates, that is the module
+    // name, the benchmark name, and the timed method. The benchmark names
+    // are the same ones the harness accepts as a filter, so a regression
+    // reported here can be reproduced with
+    //
+    //     python -m benchmarks --filter <name>
+    //
+    // Every identifier below corresponds to a declaration that exists. A
+    // threshold for a benchmark that does not exist is silently ignored by
+    // the tool, which is the worst possible outcome, so the list is checked
+    // against the generated identifiers with
+    //
+    //     python benchmarks/asv_suite/suite.py
     "regressions_thresholds": {
         "": 0.5,
-        "bench_number_theory.modular_exponentiation": 0.2,
-        "bench_number_theory.sieve_eratosthenes": 0.2,
-        "bench_graphs.dijkstra_sparse": 0.2,
-        "bench_graphs.breadth_first_search": 0.2,
-        "bench_sets.union_integers": 0.2,
-        "bench_sets.transitive_closure": 0.2,
-        "bench_logic.tseitin_nested": 0.2,
-        "bench_algebra.core_matrix_power": 0.2
+
+        // Set algebra. The most frequently called code in the library, and
+        // linear in the total size of its arguments, so a step here is
+        // almost certainly a change of the underlying representation.
+        "suite.union_integers.time_run": 0.2,
+        "suite.intersection_integers.time_run": 0.2,
+        "suite.union_bit_sets.time_run": 0.2,
+        "suite.intersection_bit_sets.time_run": 0.2,
+        "suite.membership.time_run": 0.2,
+        "suite.construction.time_run": 0.2,
+
+        // Relations and equivalences. The closure is the cubic routine a
+        // user is most likely to call on something large, and the union
+        // find operations claim near constant amortized cost, which is the
+        // kind of claim that quietly stops holding.
+        "suite.transitive_closure.time_run": 0.2,
+        "suite.is_transitive_sparse.time_run": 0.2,
+        "suite.union_find_merge.time_run": 0.2,
+        "suite.union_find_find.time_run": 0.2,
+
+        // Logic. The Tseitin transformation is documented as linear in the
+        // size of the formula, which is the property that makes encoding to
+        // conjunctive normal form practical at all.
+        "suite.tseitin_nested.time_run": 0.2,
+        "suite.truth_table.time_run": 0.2,
+        "suite.unit_propagation.time_run": 0.2,
+
+        // Combinatorics. The counting routines are the ones called in a
+        // loop, and the prefix generators claim constant time to produce a
+        // first object from an exponential space, which is the whole point
+        // of the lazy enumeration.
+        "suite.binomial_middle.time_run": 0.2,
+        "suite.catalan.time_run": 0.2,
+        "suite.stirling_second.time_run": 0.2,
+        "suite.permutations_prefix.time_run": 0.2,
+        "suite.power_set_prefix.time_run": 0.2,
+
+        // Graphs. Traversal and shortest paths dominate any real use of the
+        // package, and each of these has a documented bound that a change
+        // of data structure would break without changing any result.
+        "suite.adjacency_list.time_run": 0.2,
+        "suite.connected_components.time_run": 0.2,
+        "suite.topological_sort.time_run": 0.2,
+        "suite.tarjan_strong_components.time_run": 0.2,
+        "suite.bfs_shortest.time_run": 0.2,
+        "suite.dijkstra_sparse.time_run": 0.2,
+        "suite.dijkstra_dense.time_run": 0.2,
+        "suite.kruskal_sparse.time_run": 0.2,
+        "suite.prim_sparse.time_run": 0.2,
+        "suite.greedy_coloring.time_run": 0.2,
+
+        // Number theory. The modular arithmetic and the sieve are the
+        // routines most likely to sit inside someone else's loop, and the
+        // greatest common divisor is called by nearly everything else.
+        "suite.extended_euclidean.time_run": 0.2,
+        "suite.binary_gcd.time_run": 0.2,
+        "suite.modular_exponentiation.time_run": 0.2,
+        "suite.modular_inverse.time_run": 0.2,
+        "suite.sieve_eratosthenes.time_run": 0.2,
+        "suite.miller_rabin_on_prime.time_run": 0.2,
+        "suite.euler_totient_from_factorization.time_run": 0.2,
+
+        // Algebra. The axiom verification is quadratic or cubic by
+        // necessity, and it runs at construction, so it is the cost a user
+        // is most often surprised by and the one most worth watching.
+        "suite.core_verify_closure.time_run": 0.2,
+        "suite.core_verify_associativity.time_run": 0.2,
+        "suite.core_identity_search.time_run": 0.2,
+        "suite.cyclic_group_unverified.time_run": 0.2,
+        "suite.polynomial_multiply.time_run": 0.2,
+        "suite.polynomial_divmod.time_run": 0.2,
+        "suite.polynomial_evaluate.time_run": 0.2,
+        "suite.core_matrix_multiply.time_run": 0.2,
+        "suite.core_matrix_power.time_run": 0.2,
+
+        // Peak memory is reported for the whole process and therefore
+        // includes the prepared input, so the figures are coarse. The
+        // threshold is correspondingly loose: it is meant to catch a
+        // routine that began materialising a structure it used to stream,
+        // not to police an allocation or two.
+        "suite.union_integers.peakmem_run": 1.0,
+        "suite.transitive_closure.peakmem_run": 1.0,
+        "suite.power_set_prefix.peakmem_run": 1.0,
+        "suite.permutations_prefix.peakmem_run": 1.0,
+        "suite.adjacency_list.peakmem_run": 1.0,
+        "suite.sieve_eratosthenes.peakmem_run": 1.0,
+
+        // The availability counts are not timings. They rise as the library
+        // is built out, and a rise is not a regression, so the threshold is
+        // set high enough that only a fall to nothing would be reported.
+        // A genuine fall, meaning a routine that used to be measurable and
+        // is not, shows up in the report as a step in the plot and is worth
+        // investigating by hand.
+        "suite.Availability.track_available": 10.0,
+        "suite.Availability.track_declared": 10.0
     },
 
     // Where regression detection starts. The first stable release is the
@@ -198,25 +417,90 @@
     // interface was still moving and are not comparable.
     "regressions_first_commits": {
         "": "v1.0.0"
-    },
-
-    // Plugins to load. None are needed: the suite uses the plain timing
-    // benchmarks that airspeed velocity provides, and the harness in
-    // __init__.py provides the reporting that a plugin would otherwise add.
-    "plugins": [],
-
-    // The commands used to build and install the package into each
-    // environment. They are stated explicitly rather than left to the
-    // default, because the default assumes a setup.py invocation and this
-    // project builds through pyproject.toml.
-    "build_command": [
-        "python -m pip install build",
-        "python -m build --wheel -o {build_cache_dir} {build_dir}"
-    ],
-    "install_command": [
-        "python -m pip install {wheel_file}"
-    ],
-    "uninstall_command": [
-        "return-code=any python -m pip uninstall -y discretus"
-    ]
+    }
 }
+
+// Keys deliberately left at their defaults
+// =======================================
+//
+// The tool accepts several settings that are absent above. Each is absent
+// for a reason, and recording the reason here is cheaper than rediscovering
+// it the next time someone wonders whether the file is incomplete.
+//
+// The benchmark attribute defaults, that is the repetition count, the sample
+// count, the warm up time, and the number of processes, are not set at the
+// configuration level. They are set per benchmark by the adapter, from the
+// declaration in the bench module, because the right number of repetitions
+// for a sieve over ten million integers is not the right number for a
+// membership test. A configuration level default would be overridden in
+// every single case.
+//
+// The branch list holds only the default branch. Adding a release branch
+// would make the report show two histories that diverge and rejoin, which
+// is accurate and unreadable. A release branch is measured on its own, with
+// an explicit commit range.
+//
+// No plugin is loaded. The tool's plugin interface exists to add benchmark
+// types and reporting, and both are already covered: the timing and peak
+// memory types are built in, and the reporting a contributor actually reads
+// comes from the harness, which prints growth ratios and implied exponents
+// that this tool does not compute.
+//
+// How this file is validated
+// ==========================
+//
+// Three things can be wrong with it, and each has a check.
+//
+// It can fail to parse. The configuration linting job in the lint workflow
+// strips whole line comments and parses what is left, along with every other
+// configuration file in the repository, so a malformed edit fails the
+// pipeline rather than the next historical run.
+//
+// It can name a benchmark that does not exist. A threshold whose key matches
+// nothing is silently ignored by the tool, which means a routine the
+// reference makes a promise about would quietly stop being watched. The
+// adapter prints every identifier it generates:
+//
+//     python benchmarks/asv_suite/suite.py
+//
+// It can drift from the harness. The two tools must see the same inputs, or
+// a measurement taken through one cannot be compared with a measurement
+// taken through the other. The seed in the environment matrix above is the
+// harness base seed, and the timeout is the harness timeout; both are
+// duplicated here because the tool cannot read them from the harness, and
+// both are worth checking when a number from the two sources disagrees by
+// more than the machine explains.
+//
+// Notes on reading the historical report
+// ======================================
+//
+// A step in a curve is the interesting shape. It means one commit changed
+// the cost, and the report names the commit, so the question becomes whether
+// the change was intended. A gradual drift across many commits is almost
+// always the machine rather than the library: a historical run can span days
+// of wall clock time and several runner generations.
+//
+// A curve that begins partway along the history has not regressed from
+// nothing. It begins where the routine was first implemented. The two
+// availability counts in the thresholds above exist to make that explicit,
+// because a timing report alone cannot distinguish a routine that was
+// removed from one that had not yet been written.
+//
+// A change of slope between two sizes of the same benchmark matters more
+// than a change of absolute value at one size. The reference documents
+// asymptotic bounds, and an asymptotic bound is a statement about slope. The
+// harness reports the implied exponent directly and is the better tool for
+// that question. This one is the better tool for the question of when the
+// slope changed.
+//
+// A regression reported at a single size, on a single interpreter, in a
+// single environment of the matrix, is usually noise. A regression that
+// appears at every size of one benchmark, or at one size of every benchmark
+// in a package, is usually real, and the shape of the pattern is the first
+// clue about the cause.
+//
+// The peak memory figures cover the whole process and therefore include the
+// prepared input, which for the larger sizes dominates them. They are useful
+// for finding the commit at which a routine began materialising a structure
+// it used to stream, and useless as an estimate of what a routine costs on
+// its own.
