@@ -1,0 +1,283 @@
+{
+  "@context": "https://w3id.org/codemeta/3.0",
+  "@type": "SoftwareSourceCode",
+  "identifier": "discretus",
+  "name": "discretus",
+  "alternateName": "discretus: A Discrete Mathematics library for Python",
+  "description": "discretus is a rigorous, production-grade library for discrete mathematics in pure Python. It spans seven foundational domains, namely set theory, mathematical logic, combinatorics, graph theory, number theory, recurrence relations, and abstract algebra, and exposes all of them through a single coherent application programming interface with consistent naming, predictable data structures, and uniform error handling. The computational core depends only on the standard library, so the package installs without a compiler on any platform that runs a supported interpreter, while optional visualization and documentation backends are available as extras. Selected routines can record their intermediate steps, which turns an opaque computation into a narrated derivation suitable for teaching, and many objects render themselves to LaTeX so that a computed structure can travel directly from code into a manuscript.",
+  "abstract": "A unified, dependency free library for the seven classical domains of discrete mathematics, designed for learners, educators, and practitioners, with exact arithmetic, deterministic behavior, and reproducible randomized routines.",
+  "version": "1.0.0",
+  "softwareVersion": "1.0.0",
+  "codeRepository": "https://github.com/olaflaitinen/discretus",
+  "issueTracker": "https://github.com/olaflaitinen/discretus/issues",
+  "readme": "https://github.com/olaflaitinen/discretus/blob/main/README.md",
+  "url": "https://discretus.readthedocs.io",
+  "downloadUrl": "https://pypi.org/project/discretus/#files",
+  "installUrl": "https://pypi.org/project/discretus/",
+  "buildInstructions": "https://github.com/olaflaitinen/discretus/blob/main/CONTRIBUTING.md",
+  "releaseNotes": "https://github.com/olaflaitinen/discretus/blob/main/CHANGELOG.md",
+  "contIntegration": "https://github.com/olaflaitinen/discretus/actions",
+  "dateCreated": "2025-09-01",
+  "datePublished": "2026-01-15",
+  "dateModified": "2026-01-15",
+  "copyrightYear": 2026,
+  "license": "https://spdx.org/licenses/MPL-2.0",
+  "licenseId": "MPL-2.0",
+  "programmingLanguage": [
+    {
+      "@type": "ComputerLanguage",
+      "name": "Python",
+      "version": ">=3.9",
+      "url": "https://www.python.org"
+    }
+  ],
+  "runtimePlatform": [
+    "Python 3.9",
+    "Python 3.10",
+    "Python 3.11",
+    "Python 3.12",
+    "Python 3.13",
+    "CPython",
+    "PyPy"
+  ],
+  "operatingSystem": [
+    "Linux",
+    "macOS",
+    "Windows"
+  ],
+  "applicationCategory": [
+    "Mathematics",
+    "Computer Science",
+    "Education"
+  ],
+  "applicationSubCategory": [
+    "Discrete Mathematics",
+    "Symbolic Computation",
+    "Graph Theory",
+    "Computational Number Theory",
+    "Automated Reasoning"
+  ],
+  "developmentStatus": "active",
+  "isAccessibleForFree": true,
+  "keywords": [
+    "discrete mathematics",
+    "set theory",
+    "binary relations",
+    "order theory",
+    "lattice theory",
+    "mathematical logic",
+    "propositional logic",
+    "predicate logic",
+    "satisfiability",
+    "boolean minimization",
+    "combinatorics",
+    "enumerative combinatorics",
+    "generating functions",
+    "graph theory",
+    "shortest paths",
+    "network flow",
+    "graph coloring",
+    "number theory",
+    "modular arithmetic",
+    "primality testing",
+    "integer factorization",
+    "recurrence relations",
+    "asymptotic analysis",
+    "abstract algebra",
+    "group theory",
+    "ring theory",
+    "finite fields",
+    "polynomial arithmetic",
+    "exact arithmetic",
+    "reproducible research",
+    "mathematics education",
+    "Python"
+  ],
+  "author": [
+    {
+      "@type": "Person",
+      "@id": "https://orcid.org/0009-0006-5184-0810",
+      "givenName": "Olaf Yunus",
+      "familyName": "Laitinen Imanov",
+      "name": "Olaf Yunus Laitinen Imanov",
+      "email": "yimanov@student.uef.fi",
+      "jobTitle": "Student Researcher",
+      "identifier": "https://orcid.org/0009-0006-5184-0810",
+      "affiliation": {
+        "@type": "Organization",
+        "name": "Department of Physics and Mathematics, Faculty of Science, Forestry and Technology, University of Eastern Finland",
+        "alternateName": "University of Eastern Finland",
+        "url": "https://www.uef.fi",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Joensuu",
+          "addressCountry": "FI"
+        }
+      }
+    }
+  ],
+  "maintainer": [
+    {
+      "@type": "Person",
+      "@id": "https://orcid.org/0009-0006-5184-0810",
+      "givenName": "Olaf Yunus",
+      "familyName": "Laitinen Imanov",
+      "email": "yimanov@student.uef.fi"
+    }
+  ],
+  "copyrightHolder": [
+    {
+      "@type": "Person",
+      "@id": "https://orcid.org/0009-0006-5184-0810",
+      "name": "Olaf Yunus Laitinen Imanov"
+    }
+  ],
+  "producer": {
+    "@type": "Organization",
+    "name": "Department of Physics and Mathematics, Faculty of Science, Forestry and Technology, University of Eastern Finland",
+    "url": "https://www.uef.fi"
+  },
+  "softwareRequirements": [
+    {
+      "@type": "SoftwareApplication",
+      "identifier": "python",
+      "name": "Python",
+      "version": ">=3.9",
+      "provider": {
+        "@type": "Organization",
+        "name": "Python Software Foundation",
+        "url": "https://www.python.org"
+      }
+    }
+  ],
+  "softwareSuggestions": [
+    {
+      "@type": "SoftwareApplication",
+      "identifier": "matplotlib",
+      "name": "matplotlib",
+      "version": ">=3.5",
+      "description": "Optional raster and vector rendering backend for the visualization package, installed with the viz extra."
+    },
+    {
+      "@type": "SoftwareApplication",
+      "identifier": "graphviz",
+      "name": "graphviz",
+      "version": ">=0.20",
+      "description": "Optional layout and rendering backend for graphs and Hasse diagrams, installed with the viz extra, which additionally requires the system Graphviz binaries."
+    },
+    {
+      "@type": "SoftwareApplication",
+      "identifier": "sphinx",
+      "name": "Sphinx",
+      "version": ">=7.0",
+      "description": "Documentation generator used to build the reference and the tutorials, installed with the docs extra."
+    },
+    {
+      "@type": "SoftwareApplication",
+      "identifier": "pytest",
+      "name": "pytest",
+      "version": ">=7.4",
+      "description": "Test runner for the unit, property based, and cross validation suites, installed with the dev extra."
+    },
+    {
+      "@type": "SoftwareApplication",
+      "identifier": "hypothesis",
+      "name": "Hypothesis",
+      "version": ">=6.90",
+      "description": "Property based testing library used to assert the algebraic laws the library documents, installed with the dev extra."
+    }
+  ],
+  "targetProduct": {
+    "@type": "SoftwareLibrary",
+    "name": "discretus",
+    "operatingSystem": [
+      "Linux",
+      "macOS",
+      "Windows"
+    ],
+    "applicationCategory": "Mathematics"
+  },
+  "funding": "Unfunded academic work carried out at the University of Eastern Finland.",
+  "referencePublication": {
+    "@type": "SoftwareSourceCode",
+    "name": "discretus: A Discrete Mathematics library for Python",
+    "author": "Laitinen Imanov, Olaf Yunus",
+    "datePublished": "2026-01-15",
+    "url": "https://github.com/olaflaitinen/discretus"
+  },
+  "citation": [
+    {
+      "@type": "CreativeWork",
+      "name": "CITATION.cff",
+      "url": "https://github.com/olaflaitinen/discretus/blob/main/CITATION.cff",
+      "description": "Machine readable citation metadata in Citation File Format 1.2.0, which is the authoritative source for how to cite this software."
+    }
+  ],
+  "hasPart": [
+    {
+      "@type": "SoftwareSourceCode",
+      "name": "discretus.core",
+      "description": "Shared abstractions and exact numeric helpers, namely the element protocol, the relation and function bases, the algebraic structure interfaces, exact vectors, matrices, and polynomials, modular arithmetic primitives, the step recorder, and the LaTeX rendering mixin."
+    },
+    {
+      "@type": "SoftwareSourceCode",
+      "name": "discretus.sets",
+      "description": "Finite sets, bit sets, multisets, ordered sets, interval sets, the set algebra, binary and n-ary relations, closures, equivalence relations with union find, and order theory including posets, lattices, and Hasse diagrams."
+    },
+    {
+      "@type": "SoftwareSourceCode",
+      "name": "discretus.logic",
+      "description": "Propositional expression trees with a lexer and parser, evaluation, truth tables, normal forms, the Tseitin transformation, Quine McCluskey minimization, Karnaugh maps, DPLL and conflict driven clause learning solvers, DIMACS interchange, predicate logic with quantifier evaluation and unification, and an inference layer."
+    },
+    {
+      "@type": "SoftwareSourceCode",
+      "name": "discretus.combinatorics",
+      "description": "Counting utilities, classical integer sequences, lazy generators for permutations, combinations, subsets, compositions, partitions, necklaces, and Lyndon words, ranking and unranking, formal power series, Polya enumeration, combinatorial designs, and discrete probability."
+    },
+    {
+      "@type": "SoftwareSourceCode",
+      "name": "discretus.graphs",
+      "description": "Graph, digraph, multigraph, weighted, bipartite, tree, forest, and hypergraph structures with adjacency and incidence views, traversal and connectivity, shortest paths, minimum spanning trees, network flow and matching, coloring, Eulerian and Hamiltonian analysis, structural properties, centrality, and generators."
+    },
+    {
+      "@type": "SoftwareSourceCode",
+      "name": "discretus.number_theory",
+      "description": "Greatest common divisor routines, modular arithmetic, primality testing, factorization, arithmetic functions, diophantine equations, integer sequences, and cryptographic primitives intended for teaching."
+    },
+    {
+      "@type": "SoftwareSourceCode",
+      "name": "discretus.recurrences",
+      "description": "Linear recurrence solvers, matrix exponentiation, classical sequences, the Master Theorem, recursion trees, the Akra Bazzi method, nonlinear iteration, and asymptotic growth comparison."
+    },
+    {
+      "@type": "SoftwareSourceCode",
+      "name": "discretus.algebra",
+      "description": "Groups and group actions, rings and ideals, fields and finite fields, polynomial arithmetic and factorization, exact linear algebra over rings and fields, and algebraic lattices."
+    },
+    {
+      "@type": "SoftwareSourceCode",
+      "name": "discretus.viz",
+      "description": "Pluggable ASCII, SVG, Graphviz, and matplotlib backends for graphs, Hasse diagrams, lattices, trees, truth tables, Karnaugh maps, matrices, and Venn diagrams."
+    },
+    {
+      "@type": "SoftwareSourceCode",
+      "name": "discretus.io",
+      "description": "Deterministic readers and writers for GraphML, GML, DIMACS, JSON, CSV, edge lists, adjacency data, and LaTeX export."
+    },
+    {
+      "@type": "SoftwareSourceCode",
+      "name": "discretus.utils",
+      "description": "Cross cutting helpers for timing, memoization, bit manipulation, formatting, validation, iteration, and seeded randomness."
+    }
+  ],
+  "readmeQuality": "complete",
+  "continuousIntegration": "https://github.com/olaflaitinen/discretus/actions/workflows/ci.yml",
+  "developmentPractices": [
+    "Every public routine is annotated and carries a docstring that states its parameters, return value, exceptions, and asymptotic complexity.",
+    "Advanced algorithms are cross validated against naive reference implementations on randomized inputs.",
+    "Property based tests assert the algebraic laws the documentation claims, for instance the distributive and De Morgan laws.",
+    "Randomized routines accept an explicit seed and are deterministic once it is supplied.",
+    "Serialization is deterministic, so that the same object always produces byte identical output.",
+    "The public interface follows semantic versioning, with deprecations announced at least one minor release before removal."
+  ]
+}

@@ -1,0 +1,144 @@
+{
+  "title": "discretus: A Discrete Mathematics library for Python",
+  "description": "<p><strong>discretus</strong> is a rigorous, production-grade library for discrete mathematics in pure Python. It implements the core theory and algorithms of seven foundational domains, namely set theory, mathematical logic, combinatorics, graph theory, number theory, recurrence relations, and abstract algebra, and exposes all of them through a single coherent application programming interface with consistent naming, predictable data structures, and uniform error handling.</p><p>The library is engineered to serve three audiences at once. Learners obtain transparent building blocks that map directly onto textbook definitions and theorems. Educators obtain dependable primitives for coursework, worked examples, and automated assessment, together with output that can be embedded in slides and problem sets. Practitioners obtain fast, correct, and composable routines for production systems in which discrete structures such as graphs, finite fields, and Boolean formulas appear, for example in scheduling, verification, cryptography, compilers, and data engineering.</p><p>Three design decisions distinguish the package. First, the computational core is written in pure Python and requires nothing beyond the standard library, so it installs without a compiler in restricted environments such as continuous integration runners, teaching laboratories, and automated grading sandboxes. Second, arithmetic is exact wherever exactness is meaningful, over arbitrary precision integers and over the rationals, so that a result computed on one machine is reproduced bit for bit on another. Third, the seven domains interoperate through documented conversions rather than hidden coercions, so a relation can become a directed graph, a graph can become a matrix, a matrix can be read over a finite field, and a finite group can emit a Cayley graph that the graph package traverses and draws.</p><p>Selected routines record their intermediate steps, which turns an opaque computation into a narrated derivation suitable for a lecture or a debugging session, and many objects render themselves to LaTeX so that a computed structure travels directly from code into a manuscript. Randomized routines accept an explicit seed and are deterministic once it is supplied, and every interchange format the library writes is byte stable, which makes results suitable for version control and reproducible builds.</p>",
+  "version": "1.0.0",
+  "license": "MPL-2.0",
+  "upload_type": "software",
+  "access_right": "open",
+  "publication_date": "2026-01-15",
+  "language": "eng",
+  "creators": [
+    {
+      "name": "Laitinen Imanov, Olaf Yunus",
+      "affiliation": "Department of Physics and Mathematics, Faculty of Science, Forestry and Technology, University of Eastern Finland, Joensuu, Finland",
+      "orcid": "0009-0006-5184-0810"
+    }
+  ],
+  "contributors": [
+    {
+      "name": "Laitinen Imanov, Olaf Yunus",
+      "type": "ProjectLeader",
+      "affiliation": "Department of Physics and Mathematics, Faculty of Science, Forestry and Technology, University of Eastern Finland, Joensuu, Finland",
+      "orcid": "0009-0006-5184-0810"
+    },
+    {
+      "name": "Laitinen Imanov, Olaf Yunus",
+      "type": "ContactPerson",
+      "affiliation": "Department of Physics and Mathematics, Faculty of Science, Forestry and Technology, University of Eastern Finland, Joensuu, Finland",
+      "orcid": "0009-0006-5184-0810"
+    }
+  ],
+  "keywords": [
+    "discrete mathematics",
+    "set theory",
+    "binary relations",
+    "order theory",
+    "lattice theory",
+    "mathematical logic",
+    "propositional logic",
+    "predicate logic",
+    "satisfiability",
+    "DPLL",
+    "conflict driven clause learning",
+    "Boolean minimization",
+    "combinatorics",
+    "generating functions",
+    "Polya enumeration",
+    "graph theory",
+    "shortest paths",
+    "minimum spanning trees",
+    "network flow",
+    "graph coloring",
+    "number theory",
+    "modular arithmetic",
+    "primality testing",
+    "integer factorization",
+    "Chinese remainder theorem",
+    "recurrence relations",
+    "Master Theorem",
+    "asymptotic analysis",
+    "abstract algebra",
+    "group theory",
+    "ring theory",
+    "finite fields",
+    "polynomial arithmetic",
+    "exact arithmetic",
+    "reproducible research",
+    "open educational resources",
+    "mathematics education",
+    "Python"
+  ],
+  "subjects": [
+    {
+      "term": "Discrete mathematics",
+      "identifier": "https://mathscinet.ams.org/msc/msc2020.html?t=05-XX",
+      "scheme": "MSC2020"
+    },
+    {
+      "term": "Combinatorics",
+      "identifier": "https://mathscinet.ams.org/msc/msc2020.html?t=05-XX",
+      "scheme": "MSC2020"
+    },
+    {
+      "term": "Mathematical logic and foundations",
+      "identifier": "https://mathscinet.ams.org/msc/msc2020.html?t=03-XX",
+      "scheme": "MSC2020"
+    },
+    {
+      "term": "Number theory",
+      "identifier": "https://mathscinet.ams.org/msc/msc2020.html?t=11-XX",
+      "scheme": "MSC2020"
+    },
+    {
+      "term": "Group theory and generalizations",
+      "identifier": "https://mathscinet.ams.org/msc/msc2020.html?t=20-XX",
+      "scheme": "MSC2020"
+    },
+    {
+      "term": "Mathematical software",
+      "identifier": "https://mathscinet.ams.org/msc/msc2020.html?t=68W30",
+      "scheme": "MSC2020"
+    }
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/olaflaitinen/discretus",
+      "relation": "isSupplementTo",
+      "resource_type": "software",
+      "scheme": "url"
+    },
+    {
+      "identifier": "https://pypi.org/project/discretus/",
+      "relation": "isIdenticalTo",
+      "resource_type": "software",
+      "scheme": "url"
+    },
+    {
+      "identifier": "https://discretus.readthedocs.io",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-softwaredocumentation",
+      "scheme": "url"
+    }
+  ],
+  "communities": [
+    {
+      "identifier": "mathematics"
+    },
+    {
+      "identifier": "open-science"
+    }
+  ],
+  "notes": "The cryptographic primitives in discretus.number_theory.crypto are provided for teaching and experimentation. They are not hardened against side channel attacks and must not be used to protect real secrets. Every other routine is intended for production use within the stability guarantees stated in the versioning policy of the README.",
+  "references": [
+    "Rosen, K. H. Discrete Mathematics and Its Applications. McGraw Hill.",
+    "Graham, R. L., Knuth, D. E., and Patashnik, O. Concrete Mathematics. Addison Wesley.",
+    "Cormen, T. H., Leiserson, C. E., Rivest, R. L., and Stein, C. Introduction to Algorithms. MIT Press.",
+    "Knuth, D. E. The Art of Computer Programming, Volume 4A: Combinatorial Algorithms. Addison Wesley.",
+    "Biggs, N. L. Discrete Mathematics. Oxford University Press.",
+    "Diestel, R. Graph Theory. Springer.",
+    "Hardy, G. H. and Wright, E. M. An Introduction to the Theory of Numbers. Oxford University Press.",
+    "Dummit, D. S. and Foote, R. M. Abstract Algebra. Wiley.",
+    "Biere, A., Heule, M., van Maaren, H., and Walsh, T. Handbook of Satisfiability. IOS Press.",
+    "Flajolet, P. and Sedgewick, R. Analytic Combinatorics. Cambridge University Press."
+  ]
+}
