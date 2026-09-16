@@ -1,0 +1,132 @@
+# Dockerfile lint configuration for discretus.
+#
+# The image defined in Dockerfile is a two stage build. The base stage
+# installs the library from source and carries nothing else, which keeps the
+# published image small and free of build tooling. The development stage adds
+# the test, lint, and documentation stack on top of the base stage, so that a
+# contributor can run the full quality gate inside a container that matches
+# continuous integration.
+#
+# Everyday use:
+#
+#   hadolint Dockerfile
+#   docker run --rm -i hadolint/hadolint < Dockerfile
+#
+# The linter is advisory for style and blocking for correctness, which the
+# threshold and the overrides below express. The container is a convenience
+# for contributors rather than the primary distribution channel, since the
+# library ships as a universal wheel with no compiled parts, so rules that
+# exist to shrink a production image matter less here than rules that catch
+# a build which silently produces the wrong artifact.
+
+# Fail the check on a warning or anything more severe. Style and info level
+# findings are reported without failing, so that an opinionated suggestion
+# never blocks a release while a genuine defect always does.
+failure-threshold: warning
+
+# Only these registries may appear in a FROM instruction. The allow list
+# prevents a future edit, or a copied snippet from an unrelated project,
+# from silently pulling a base image from an untrusted host.
+trustedRegistries:
+  - docker.io
+  - registry-1.docker.io
+  - ghcr.io
+
+# Labels the image is expected to carry, and the schema each value follows.
+# The Dockerfile declares the standard open container annotations, and this
+# section keeps them from drifting out of the expected shape.
+label-schema:
+  org.opencontainers.image.title: text
+  org.opencontainers.image.description: text
+  org.opencontainers.image.version: text
+  org.opencontainers.image.authors: text
+  org.opencontainers.image.url: url
+  org.opencontainers.image.documentation: url
+  org.opencontainers.image.source: url
+  org.opencontainers.image.licenses: text
+  org.opencontainers.image.base.name: text
+
+# Require every declared label to be present and well formed, rather than
+# accepting a partially annotated image.
+strict-labels: true
+
+# Rules that are deliberately not enforced, each with the reason it does not
+# apply to this image.
+ignored:
+  # DL3008 asks for a pinned version on every apt package. The image
+  # installs no apt packages at all, because the library needs no system
+  # libraries. The rule would be enabled together with the first apt
+  # instruction rather than pre emptively.
+  - DL3008
+
+  # DL3013 asks for a pinned version on every pip install. The runtime has
+  # no third party dependencies, and the development stage installs from
+  # requirements-dev.txt with constraints.txt applied, which is where the
+  # pins live. Repeating them inside the Dockerfile would create a second
+  # source of truth that could disagree with the first.
+  - DL3013
+
+  # DL3042 asks for the pip cache to be disabled on every invocation. The
+  # image sets PIP_NO_CACHE_DIR once as an environment variable, which
+  # covers every later call more reliably than a flag repeated by hand.
+  - DL3042
+
+  # DL3059 asks for consecutive RUN instructions to be merged into one
+  # layer. The stages here keep the dependency install separate from the
+  # source copy on purpose, so that editing a source file does not
+  # invalidate the dependency layer and force a full reinstall.
+  - DL3059
+
+# Findings whose severity is adjusted from the default, so that the ones
+# which break a build are unmissable and the ones which are stylistic do not
+# interrupt a release.
+override:
+  error:
+    # DL3000 requires an absolute WORKDIR. A relative one makes every later
+    # COPY target ambiguous and produces an image whose layout depends on
+    # the build context.
+    - DL3000
+    # DL3020 requires COPY rather than ADD for local files. ADD silently
+    # unpacks archives and fetches remote addresses, which would make the
+    # build non reproducible.
+    - DL3020
+    # DL3024 forbids a duplicate stage name. Two stages with one name make
+    # the target selected by the compose file unpredictable.
+    - DL3024
+    # DL4000 forbids the deprecated MAINTAINER instruction, which the
+    # standard annotations replace.
+    - DL4000
+
+  warning:
+    # DL3025 prefers the exec form of CMD and ENTRYPOINT, so that the
+    # process receives signals directly and a container stops promptly
+    # instead of waiting for a shell to forward the signal.
+    - DL3025
+    # DL3045 requires a WORKDIR before a relative COPY, which is the same
+    # class of defect as DL3000 but detected at the copy site.
+    - DL3045
+
+  info:
+    # DL3018 asks for pinned apk packages, which is irrelevant to a Debian
+    # based image and is kept only so that a future switch of base image
+    # reports it rather than hiding it.
+    - DL3018
+
+  style:
+    # DL3006 asks for a tagged base image. The Dockerfile already pins the
+    # interpreter tag, and the rule stays at style level so that a digest
+    # pin remains a considered choice rather than a requirement.
+    - DL3006
+
+# Report in the terminal format, which the continuous integration log
+# renders readably and which a contributor sees identically on a laptop.
+format: tty
+
+# Do not colour the output, so that the log stays legible when it is
+# captured into an artifact or pasted into an issue.
+no-color: false
+
+# Also analyse the shell commands inside RUN instructions with the embedded
+# ShellCheck rules, using the same severity floor as the standalone script
+# analysis in .shellcheckrc.
+disable-ignore-pragma: false

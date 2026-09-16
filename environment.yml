@@ -1,0 +1,162 @@
+# Conda development environment for discretus.
+#
+# The library itself needs nothing beyond the standard library, so this file
+# is not required in order to use discretus. It exists for two situations.
+# The first is a contributor who prefers conda to a virtual environment. The
+# second is the optional visualization stack, where conda-forge installs the
+# Graphviz system binaries alongside the Python bindings, which pip cannot
+# do and which otherwise has to be arranged by hand on every platform.
+#
+# ---------------------------------------------------------------------------
+# Lifecycle
+# ---------------------------------------------------------------------------
+#
+# Create and activate the environment:
+#
+#   conda env create --file environment.yml
+#   conda activate discretus-dev
+#
+# Update it after this file changes, removing packages that were dropped:
+#
+#   conda env update --file environment.yml --prune
+#
+# Inspect what was actually installed, which is what to attach to a bug
+# report about the environment rather than this file:
+#
+#   conda env export --no-builds > environment.lock.yml
+#
+# Remove it:
+#
+#   conda deactivate
+#   conda env remove --name discretus-dev
+#
+# ---------------------------------------------------------------------------
+# Relationship to the other dependency files
+# ---------------------------------------------------------------------------
+#
+# pyproject.toml is the single source of truth for what the library and its
+# extras require. requirements-dev.txt and requirements-docs.txt mirror the
+# dev and docs extras for tooling that reads requirement files, and
+# constraints.txt holds the upper bounds that keep continuous integration
+# reproducible. This file mirrors the same set for conda users and adds the
+# few tools that are convenient to obtain as system packages, namely the
+# shell and YAML linters and the Graphviz binaries.
+#
+# When a version bound changes, change it in pyproject.toml first and then
+# reflect it here, so that the two never disagree about a minimum.
+#
+# ---------------------------------------------------------------------------
+# Interpreter version
+# ---------------------------------------------------------------------------
+#
+# The interpreter pinned below matches the first entry of .python-version,
+# which is the version that reports coverage and builds the documentation in
+# continuous integration. Do not change it in order to test another
+# interpreter. Run the matrix instead, which manages its own environments:
+#
+#   nox --session tests
+#   tox
+
+name: discretus-dev
+
+channels:
+  - conda-forge
+  # Explicitly exclude the default channels, so that the environment is
+  # resolvable by anyone regardless of the channel terms they have accepted,
+  # and so that a package never silently changes provenance between two
+  # machines.
+  - nodefaults
+
+dependencies:
+  # -------------------------------------------------------------------------
+  # Interpreter and packaging
+  # -------------------------------------------------------------------------
+  - python=3.12
+  - pip>=24.0
+  - setuptools>=64
+  - wheel
+  # Build frontend used by `make build`, which produces the source
+  # distribution and the universal wheel.
+  - python-build>=1.2
+  # Metadata checker run before a release, so that a malformed long
+  # description is caught locally rather than by the index.
+  - twine>=5.0
+
+  # -------------------------------------------------------------------------
+  # Testing
+  # -------------------------------------------------------------------------
+  - pytest>=7.4
+  - pytest-cov>=4.1
+  # Property based testing, used for the algebraic laws the documentation
+  # claims, for instance the distributive laws of set algebra and the De
+  # Morgan laws, and for the cross validation of a tuned implementation
+  # against its naive reference on randomized inputs.
+  - hypothesis>=6.90
+  # Parallel test execution for the slower suites, which is optional but
+  # makes the full run comfortable on a laptop.
+  - pytest-xdist>=3.5
+  # Deterministic test ordering, so that a failure reproduces from the same
+  # seed rather than depending on collection order.
+  - pytest-randomly>=3.15
+
+  # -------------------------------------------------------------------------
+  # Formatting, linting, typing, and security analysis
+  # -------------------------------------------------------------------------
+  - black>=24.1
+  - isort>=5.13
+  - ruff>=0.3
+  - pylint>=3.0
+  - mypy>=1.8
+  - bandit>=1.7
+  - pre-commit>=3.6
+  # Prose and configuration linters, each with a configuration file at the
+  # repository root: .codespellrc, .yamllint.yml, .shellcheckrc.
+  - codespell>=2.2
+  - yamllint>=1.35
+  - shellcheck>=0.10
+
+  # -------------------------------------------------------------------------
+  # Interpreter matrix runners
+  # -------------------------------------------------------------------------
+  - nox>=2024.3.2
+  - tox>=4.11
+
+  # -------------------------------------------------------------------------
+  # Documentation
+  # -------------------------------------------------------------------------
+  - sphinx>=7.0
+  # Markdown support, because the documentation sources are Markdown rather
+  # than reStructuredText.
+  - myst-parser>=2.0
+  - furo>=2024.1.29
+  - sphinx-copybutton>=0.5
+  # Live rebuild during prose work, which shortens the review loop.
+  - sphinx-autobuild>=2024.2.4
+
+  # -------------------------------------------------------------------------
+  # Optional visualization backends, matching the viz extra
+  # -------------------------------------------------------------------------
+  # The raster and vector renderer used by the matplotlib backend.
+  - matplotlib>=3.5
+  # The Graphviz system binaries, which the graph and Hasse diagram renderer
+  # invokes, and which pip cannot install.
+  - graphviz>=9.0
+  # The Python bindings for those binaries.
+  - python-graphviz>=0.20
+
+  # -------------------------------------------------------------------------
+  # Installed through pip
+  # -------------------------------------------------------------------------
+  - pip:
+      # Benchmark runner referenced by benchmarks/asv.conf.json, which is
+      # not packaged on conda-forge.
+      - asv>=0.6
+      # Dependency vulnerability audit, used by the scheduled security
+      # workflow and worth having locally before a release.
+      - pip-audit>=2.7
+      # Markdown linter configured by .markdownlint.jsonc, distributed
+      # through the Node ecosystem and wrapped for Python here.
+      - pymarkdownlnt>=0.9
+      # The library itself, installed in editable mode so that a source
+      # edit is visible without reinstalling.
+      - -e .

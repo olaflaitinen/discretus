@@ -1,0 +1,185 @@
+# Coverage service configuration for discretus.
+#
+# The pipeline in .github/workflows/ci.yml uploads coverage.xml from the
+# Ubuntu job on Python 3.12. This file decides how that report is turned
+# into a pull request status and a comment. The complementary file
+# .coveragerc decides what the measurement itself includes.
+#
+# Validate a change to this file before pushing it:
+#
+#   curl --data-binary @codecov.yml https://codecov.io/validate
+
+codecov:
+  # Wait for every upload before posting a status, so that a partial report
+  # from a job that finished early never fails a pull request.
+  require_ci_to_pass: true
+  notify:
+    # One upload is expected per run, from the single job that reports.
+    after_n_builds: 1
+    wait_for_ci: true
+
+coverage:
+  precision: 2
+  round: down
+  # Anything below seventy percent is red, above ninety is green, and the
+  # band between them is orange. The project target is stricter than the
+  # red threshold on purpose, so that a decline is visible long before the
+  # colour changes.
+  range: "70...90"
+
+  status:
+    project:
+      default:
+        # The whole library must stay at or above ninety percent, and a
+        # pull request may not lose more than half a percentage point,
+        # which absorbs ordinary measurement noise without hiding a real
+        # regression.
+        target: 90%
+        threshold: 0.5%
+        base: auto
+        if_ci_failed: error
+        informational: false
+        only_pulls: false
+
+      # Per package statuses, so that a decline is attributed to the domain
+      # that caused it instead of being averaged away across the library.
+      core:
+        target: 95%
+        threshold: 0.5%
+        paths:
+          - "discretus/core/"
+      sets:
+        target: 92%
+        threshold: 1%
+        paths:
+          - "discretus/sets/"
+      logic:
+        target: 92%
+        threshold: 1%
+        paths:
+          - "discretus/logic/"
+      combinatorics:
+        target: 92%
+        threshold: 1%
+        paths:
+          - "discretus/combinatorics/"
+      graphs:
+        target: 92%
+        threshold: 1%
+        paths:
+          - "discretus/graphs/"
+      number_theory:
+        target: 92%
+        threshold: 1%
+        paths:
+          - "discretus/number_theory/"
+      recurrences:
+        target: 92%
+        threshold: 1%
+        paths:
+          - "discretus/recurrences/"
+      algebra:
+        target: 92%
+        threshold: 1%
+        paths:
+          - "discretus/algebra/"
+      interchange:
+        target: 85%
+        threshold: 1%
+        paths:
+          - "discretus/io/"
+          - "discretus/utils/"
+      visualization:
+        # The rendering backends depend on optional packages that the
+        # reporting job does not install, so their target is lower by
+        # design rather than by neglect.
+        target: 70%
+        threshold: 2%
+        paths:
+          - "discretus/viz/"
+
+    patch:
+      default:
+        # New and changed lines are held to a higher standard than the
+        # library average, because a contributor can always test the code
+        # they are writing now.
+        target: 95%
+        threshold: 0%
+        base: auto
+        if_ci_failed: error
+
+    changes:
+      # Report when coverage moves in a file the pull request did not
+      # touch, which usually means a test became non deterministic.
+      default:
+        if_ci_failed: error
+
+# Files that are measured but must not influence the statuses.
+ignore:
+  - "tests/**"
+  - "benchmarks/**"
+  - "examples/**"
+  - "docs/**"
+  - "scripts/**"
+  - "setup.py"
+  - "noxfile.py"
+  - "versioneer.py"
+  - "discretus/_version.py"
+  - "discretus/__main__.py"
+
+# Flags let the report be split by the part of the suite that produced it.
+flag_management:
+  default_rules:
+    carryforward: true
+    statuses:
+      - type: project
+        target: 90%
+        threshold: 0.5%
+  individual_flags:
+    - name: unit
+      paths:
+        - "discretus/"
+      carryforward: true
+    - name: doctest
+      paths:
+        - "discretus/"
+      carryforward: true
+
+comment:
+  # A compact comment that shows the diff first, then the affected files,
+  # and finally the components, and that is edited in place on every push
+  # instead of accumulating one comment per run.
+  layout: "header, diff, flags, components, files, footer"
+  behavior: default
+  require_changes: true
+  require_base: false
+  require_head: true
+  hide_project_coverage: false
+
+github_checks:
+  # Annotate the changed lines that no test reached, directly in the
+  # pull request diff.
+  annotations: true
+
+component_management:
+  individual_components:
+    - component_id: core_layer
+      name: Core layer
+      paths:
+        - "discretus/core/"
+    - component_id: domains
+      name: Domain packages
+      paths:
+        - "discretus/sets/"
+        - "discretus/logic/"
+        - "discretus/combinatorics/"
+        - "discretus/graphs/"
+        - "discretus/number_theory/"
+        - "discretus/recurrences/"
+        - "discretus/algebra/"
+    - component_id: services
+      name: Cross cutting services
+      paths:
+        - "discretus/viz/"
+        - "discretus/io/"
+        - "discretus/utils/"

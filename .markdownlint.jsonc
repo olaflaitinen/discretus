@@ -1,0 +1,240 @@
+// Markdown lint configuration for discretus.
+//
+// The repository contains a large amount of prose: the README, the
+// community health documents at the root, the documentation sources under
+// docs/, the tutorials, and the issue and pull request templates. These
+// rules keep that prose consistent and catch the mistakes that render
+// incorrectly rather than the ones that are merely a matter of taste.
+//
+// Run the linter over every Markdown file:
+//
+//   markdownlint-cli2 "**/*.md" "#docs/_build" "#.venv"
+//
+// Or through pre-commit, which passes the changed files only. Rules are
+// identified by their number and their alias; both are accepted here, and
+// the alias is used throughout because it documents the intent.
+{
+  // Start from the full rule set and switch off only what is justified
+  // below, so that a rule added by a future release of the linter is
+  // enabled by default rather than silently skipped.
+  "default": true,
+
+  // MD003 heading-style. ATX headings only, written with leading hashes.
+  // The alternative setext style cannot express headings below level two
+  // and would therefore be inconsistent across a document.
+  "heading-style": {
+    "style": "atx"
+  },
+
+  // MD004 ul-style. A single dash for every unordered list marker.
+  "ul-style": {
+    "style": "dash"
+  },
+
+  // MD007 ul-indent. Two spaces per nesting level, which matches the
+  // indentation the Python sources and the YAML files use.
+  "ul-indent": {
+    "indent": 2
+  },
+
+  // MD009 no-trailing-spaces. Trailing whitespace is forbidden, with the
+  // exception of the two space line break, which is disallowed as well
+  // because an explicit blank line is clearer and survives reformatting.
+  "no-trailing-spaces": {
+    "br_spaces": 0,
+    "strict": true
+  },
+
+  // MD010 no-hard-tabs. Tabs render at different widths in different
+  // viewers, so prose uses spaces. Code blocks are checked too, because a
+  // tab inside a Python block would be a genuine defect.
+  "no-hard-tabs": {
+    "code_blocks": true,
+    "spaces_per_tab": 4
+  },
+
+  // MD012 no-multiple-blanks. At most one blank line, so that the vertical
+  // rhythm of a document does not depend on who edited it last.
+  "no-multiple-blanks": {
+    "maximum": 1
+  },
+
+  // MD013 line-length. The documentation is written in hard wrapped
+  // paragraphs, which keeps diffs readable, but a table or a long URL
+  // cannot always be wrapped. Tables, code blocks, and headings are
+  // therefore exempt while ordinary prose is held to a generous limit.
+  "line-length": {
+    "line_length": 100,
+    "heading_line_length": 100,
+    "code_block_line_length": 120,
+    "code_blocks": false,
+    "tables": false,
+    "headings": true,
+    "strict": false,
+    "stern": false
+  },
+
+  // MD022 blanks-around-headings. One blank line above and below every
+  // heading, which several renderers require in order to recognize it.
+  "blanks-around-headings": {
+    "lines_above": 1,
+    "lines_below": 1
+  },
+
+  // MD024 no-duplicate-heading. Identical headings are allowed when they
+  // sit under different parents, which the API reference relies on, since
+  // every module section repeats the same subsection names.
+  "no-duplicate-heading": {
+    "siblings_only": true
+  },
+
+  // MD025 single-title. Exactly one level one heading per document, which
+  // is what the documentation generator expects as the page title.
+  "single-title": {
+    "level": 1,
+    "front_matter_title": "^\\s*title\\s*[:=]"
+  },
+
+  // MD026 no-trailing-punctuation. A heading never ends in punctuation.
+  // Question marks are allowed, because the frequently asked questions are
+  // phrased as questions.
+  "no-trailing-punctuation": {
+    "punctuation": ".,;:!"
+  },
+
+  // MD029 ol-prefix. Ordered lists are numbered in full, so that a reader
+  // of the raw file sees the same numbers as a reader of the rendered
+  // page, which matters for a procedure with numbered steps.
+  "ol-prefix": {
+    "style": "ordered"
+  },
+
+  // MD033 no-inline-html. A small set of elements is permitted, because
+  // the archival metadata description and a few tables need them and there
+  // is no Markdown equivalent.
+  "no-inline-html": {
+    "allowed_elements": [
+      "br",
+      "details",
+      "summary",
+      "sub",
+      "sup",
+      "kbd"
+    ]
+  },
+
+  // MD035 hr-style. Three dashes for every thematic break, which is the
+  // style the README already uses between its sections.
+  "hr-style": {
+    "style": "---"
+  },
+
+  // MD036 no-emphasis-as-heading. Emphasis is not a heading, with the
+  // exception of the bold lead in used by the design principles and the
+  // frequently asked questions, where the emphasized phrase opens a
+  // paragraph rather than introducing a section.
+  "no-emphasis-as-heading": {
+    "punctuation": ".,;:"
+  },
+
+  // MD040 fenced-code-language. Every fence declares a language, so that
+  // syntax highlighting and the documentation build behave predictably.
+  "fenced-code-language": {
+    "allowed_languages": [
+      "python",
+      "pycon",
+      "bash",
+      "console",
+      "text",
+      "bibtex",
+      "json",
+      "yaml",
+      "toml",
+      "ini",
+      "cfg",
+      "diff",
+      "dockerfile",
+      "latex",
+      "make"
+    ],
+    "language_only": true
+  },
+
+  // MD044 proper-names. The project name is lower case in prose, because
+  // it is the import name, and the surrounding technology names are
+  // capitalized as their own projects capitalize them. Code spans and
+  // headings are excluded so that an import statement is never rewritten.
+  "proper-names": {
+    "names": [
+      "discretus",
+      "Python",
+      "GitHub",
+      "PyPI",
+      "Sphinx",
+      "Graphviz",
+      "matplotlib",
+      "pytest",
+      "mypy",
+      "Hypothesis",
+      "Docker",
+      "LaTeX",
+      "Zenodo",
+      "GraphML",
+      "DIMACS",
+      "JSON",
+      "CSV",
+      "ASCII",
+      "SVG",
+      "Mozilla Public License"
+    ],
+    "code_blocks": false,
+    "code_block_line_length": 120,
+    "html_elements": false
+  },
+
+  // MD046 code-block-style. Fenced blocks only. Indented blocks are
+  // ambiguous next to a nested list and are easy to break while editing.
+  "code-block-style": {
+    "style": "fenced"
+  },
+
+  // MD048 code-fence-style. Backticks, which the documentation generator
+  // and every renderer in use handle identically.
+  "code-fence-style": {
+    "style": "backtick"
+  },
+
+  // MD049 emphasis-style and MD050 strong-style. Underscores for emphasis
+  // and asterisks for strong emphasis, which keeps the two visually
+  // distinct in the raw file.
+  "emphasis-style": {
+    "style": "underscore"
+  },
+  "strong-style": {
+    "style": "asterisk"
+  },
+
+  // MD055 and MD056, table formatting. Every row is delimited on both
+  // sides and every row has the same number of cells, which keeps the
+  // complexity reference and the roadmap tables from silently dropping a
+  // column.
+  "table-pipe-style": {
+    "style": "leading_and_trailing"
+  },
+  "table-column-count": true,
+
+  // Rules that are deliberately switched off.
+
+  // MD041 first-line-heading. The documentation pages under docs/ may open
+  // with front matter or with a directive rather than a heading.
+  "first-line-heading": false,
+
+  // MD034 no-bare-urls. The links section of the README lists plain
+  // addresses on purpose, because they are meant to be copied rather than
+  // clicked.
+  "no-bare-urls": false,
+
+  // MD028 no-blanks-blockquote. A blank line inside a block quote is used
+  // to separate the paragraphs of a quoted license excerpt.
+  "no-blanks-blockquote": false
+}

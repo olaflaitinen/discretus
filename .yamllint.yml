@@ -1,0 +1,116 @@
+# YAML lint configuration for discretus.
+#
+# The repository carries a fair amount of YAML: the continuous integration
+# workflows, the dependabot schedule, the documentation build, the coverage
+# service configuration, the container composition, and the pre-commit
+# hooks. These rules keep all of it consistent and catch the mistakes that
+# a YAML parser accepts but a human did not intend, such as a duplicate key
+# that silently discards the earlier value.
+#
+# Run it over the whole repository with:
+#
+#   yamllint --strict .
+
+extends: default
+
+yaml-files:
+  - "*.yaml"
+  - "*.yml"
+  - ".yamllint"
+
+ignore: |
+  .venv/
+  .nox/
+  .tox/
+  build/
+  dist/
+  docs/_build/
+  node_modules/
+
+rules:
+  # Structure and correctness. These are errors because each one either
+  # loses data or changes the meaning of the document.
+  key-duplicates: error
+  octal-values:
+    # An unquoted leading zero is read as an octal number, which turns a
+    # value such as 0755 into 493. Requiring quotes makes the intent
+    # explicit.
+    forbid-implicit-octal: true
+    forbid-explicit-octal: true
+    level: error
+  trailing-spaces: error
+  new-line-at-end-of-file: error
+  new-lines:
+    type: unix
+
+  # Layout. The project indents YAML by two spaces and indents sequences
+  # under their key, which is the style the existing workflows use.
+  indentation:
+    spaces: 2
+    indent-sequences: true
+    check-multi-line-strings: false
+    level: error
+
+  line-length:
+    # Workflow expressions and long URLs regularly exceed eighty
+    # characters and cannot be wrapped, so the limit is generous and
+    # advisory rather than fatal.
+    max: 120
+    allow-non-breakable-words: true
+    allow-non-breakable-inline-mappings: true
+    level: warning
+
+  comments:
+    require-starting-space: true
+    ignore-shebangs: true
+    min-spaces-from-content: 1
+  comments-indentation: warning
+
+  document-start:
+    # A leading document marker is optional. Neither style is enforced,
+    # because the forge templates in this repository omit it while many
+    # external examples include it.
+    present: false
+    level: warning
+  document-end:
+    present: false
+
+  empty-lines:
+    max: 2
+    max-start: 0
+    max-end: 0
+  empty-values:
+    forbid-in-block-mappings: false
+    forbid-in-flow-mappings: true
+
+  # Scalars and keys.
+  truthy:
+    # GitHub Actions uses the key `on`, which YAML 1.1 reads as the boolean
+    # true. It has to be allowed or every workflow would fail the check.
+    allowed-values: ["true", "false", "on"]
+    check-keys: true
+    level: error
+
+  quoted-strings:
+    # Quoting is a matter of taste except where it changes meaning, which
+    # the octal and truthy rules already cover.
+    required: only-when-needed
+    extra-allowed: ["^[0-9]+\\.[0-9]+$", "^\\*"]
+    level: warning
+
+  key-ordering: disable
+  braces:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+  brackets:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+  colons:
+    max-spaces-before: 0
+    max-spaces-after: 1
+  commas:
+    max-spaces-before: 0
+    min-spaces-after: 1
+    max-spaces-after: 1
+  hyphens:
+    max-spaces-after: 1

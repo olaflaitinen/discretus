@@ -1,0 +1,82 @@
+# Spell checking configuration for discretus.
+#
+# codespell searches for known misspellings rather than checking every word
+# against a dictionary. That design is what makes it safe to run over source
+# code, where identifiers, mathematical vocabulary, and the names of
+# algorithms would defeat an ordinary spell checker and bury a real finding
+# under hundreds of false ones.
+#
+# Everyday use:
+#
+#   codespell                      # report findings, exit non zero if any
+#   codespell --write-changes      # apply the unambiguous corrections
+#   codespell --interactive 3      # decide each finding by hand
+#
+# The check also runs through pre-commit on the changed files only, and in
+# continuous integration over the whole tree. A finding in prose is a defect
+# like any other, because the documentation is the interface a learner meets
+# first, and a misspelled theorem name is worse than a misspelled variable.
+#
+# Reviewing a correction before accepting it matters here more than in most
+# projects. The library writes about mathematical objects whose names look
+# like misspellings to a dictionary, for instance the Mobius function, the
+# Boruvka algorithm, and the Erdos Renyi model, all of which appear without
+# their diacritics on purpose so that the sources stay pure ASCII.
+
+[codespell]
+# Paths that hold no prose of ours. The license file is excluded because it
+# is a verbatim legal text that must never be altered, not even to fix what
+# looks like a typographic slip. The lock and binary patterns are excluded
+# because a correction inside them would corrupt the file.
+skip = .git,.venv,.nox,.tox,build,dist,*.egg-info,__pycache__,.mypy_cache,.ruff_cache,.pytest_cache,.hypothesis,htmlcov,docs/_build,LICENSE,NOTICE,*.lock,*.svg,*.png,*.jpg,*.pdf,*.ico,*.woff,*.woff2
+
+# Words that are correct in this repository even though the dictionary, or a
+# reviewer skimming the diff, may read them as mistakes. Each entry is
+# listed with its reason, because an unexplained entry tends to grow into a
+# place where genuine typographic errors hide.
+#
+#   iff      the standard abbreviation of "if and only if". It appears in
+#            the logic package, in the statements of the theorems the
+#            docstrings quote, and in the names of the biconditional
+#            helpers.
+#   nd       part of the identifier "nd_array" style names and of the
+#            ordinal "2nd" inside quoted textbook references.
+#   ba       appears in the Barabasi Albert generator, whose module is
+#            named barabasi_albert and whose parameter names abbreviate it.
+#   te       appears inside identifiers such as "te_st" fixtures generated
+#            by the property based suite and in quoted DIMACS comments.
+#   ot       part of "ot" in the orbit stabilizer abbreviations used by the
+#            group action tests.
+#   som      appears in quoted references whose titles are not English.
+#   ans      the conventional name for the answer variable in the worked
+#            examples of the tutorials.
+ignore-words-list = iff,nd,ba,te,ot,som,ans
+
+# Only report corrections codespell is confident about. The clear dictionary
+# holds entries that are almost always wrong, and the rare dictionary holds
+# uncommon words that are nonetheless unambiguous. The informal and usage
+# dictionaries are deliberately left out: they suggest style changes such as
+# rewriting "doesn't" or "gotten", which would produce noise across a body
+# of technical prose that has its own agreed voice.
+builtin = clear,rare
+
+# Report the file, the line, and the suggestion, and suppress the summary
+# noise that makes a continuous integration log hard to read. Level 2 hides
+# the "no files to check" and the disabled dictionary notices while keeping
+# every actual finding.
+quiet-level = 2
+
+# Check file and directory names as well as their contents. A misspelled
+# module name is far more expensive to fix later than a misspelled word in a
+# paragraph, because it becomes part of the public import path and then
+# falls under the backward compatibility guarantee.
+check-filenames =
+
+# Check dot files too. The repository keeps a large amount of documentation
+# inside comments in its dot files, and that prose deserves the same care as
+# the prose in the Markdown documents.
+check-hidden =
+
+# Exit with a non zero status when a finding remains, so that the check can
+# gate a pull request rather than merely inform it.
+count =

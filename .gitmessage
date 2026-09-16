@@ -1,0 +1,165 @@
+# <type>(<scope>): <subject in the imperative, at most 72 characters>
+#
+# <body: explain what changed and why, wrapped at 72 characters. Describe
+# the mathematics when behavior changes, and state the old behavior next to
+# the new one so that a reviewer can judge the difference without running
+# the code. Leave one blank line between the subject and the body.>
+#
+# <footer: issue references and breaking change notes>
+#
+# ----------------------------------------------------------------------
+# This is the commit message template for discretus. Enable it once with:
+#
+#     git config commit.template .gitmessage
+#
+# Every line that starts with a hash is stripped before the message is
+# stored, so this guidance never reaches the history.
+# ----------------------------------------------------------------------
+#
+# Type, required. Choose exactly one:
+#
+#   feat      a new structure, algorithm, or public interface
+#   fix       a correction to behavior that was wrong
+#   perf      a change that improves speed or memory without changing
+#             documented behavior
+#   refactor  an internal change with no behavioral effect
+#   docs      documentation, docstrings, tutorials, or examples
+#   test      tests only, including a regression test for a known defect
+#   build     packaging, dependencies, or the build backend
+#   ci        continuous integration and repository automation
+#   chore     maintenance that fits none of the above
+#   revert    an undo of an earlier commit, naming it in the body
+#
+# Scope, optional but preferred. Name the package the change belongs to:
+#
+#   core, sets, logic, combinatorics, graphs, number_theory, recurrences,
+#   algebra, viz, io, utils, cli, docs, benchmarks, scripts
+#
+# Subject rules:
+#
+#   Use the imperative mood, as in "add", "fix", "remove", not "added" or
+#   "adds". Do not capitalize the first word after the colon. Do not end
+#   with a period. Keep it under 72 characters so that it is never
+#   truncated in a log listing.
+#
+# Body rules:
+#
+#   State the reason for the change, not only its content, because the
+#   diff already shows the content. Mention the asymptotic complexity of a
+#   new routine, the reference you followed for an algorithm, and the way
+#   you validated the result, for example cross validation against a naive
+#   implementation on randomized inputs.
+#
+# Footer rules:
+#
+#   Reference issues with "Closes #123" or "Refs #123". Announce an
+#   incompatible change with a "BREAKING CHANGE:" paragraph that names the
+#   affected interface and gives the migration step.
+#
+# Prose rules that apply to every message:
+#
+#   Use plain punctuation. Do not use the long dash character and do not
+#   use emoji anywhere in the repository, including commit messages.
+#
+# Example:
+#
+#   feat(graphs): add Boruvka minimum spanning tree
+#
+#   Implement the Boruvka algorithm with union find component merging,
+#   which contracts every component in a round and therefore runs in
+#   O(|E| log |V|) time. The result is cross validated against Kruskal on
+#   ten thousand randomized weighted graphs, since both must return the
+#   same total weight even when the trees themselves differ.
+#
+#   Closes #42
+#
+# ----------------------------------------------------------------------
+# One example per type, so that a contributor can copy the closest one
+# rather than inventing a shape.
+# ----------------------------------------------------------------------
+#
+#   feat(number_theory): add Tonelli Shanks modular square roots
+#
+#   Solve x squared congruent to a modulo an odd prime p by the Tonelli
+#   Shanks algorithm, which reduces to the cyclic structure of the
+#   multiplicative group and runs in O(log squared p) modular
+#   multiplications for a prime where the two part of p minus one is
+#   small. The routine returns both roots, or reports that a is a
+#   quadratic non residue, which the Legendre symbol decides first.
+#
+#   Validated against exhaustive search for every prime below ten
+#   thousand and every residue, which is the strongest check available
+#   at that size.
+#
+#   Closes #118
+#
+#   fix(graphs): reject negative cycles in Bellman Ford instead of looping
+#
+#   The relaxation loop ran the documented number of rounds and then
+#   returned the distances it had, which are meaningless when a negative
+#   cycle is reachable from the source. It now performs the extra round
+#   the algorithm prescribes and raises InfeasibleError naming one vertex
+#   on the cycle, so a caller can locate the problem in the input.
+#
+#   The previous behavior silently produced wrong shortest paths, which
+#   is worse than an error, so this is a correction and not a feature.
+#
+#   Closes #204
+#
+#   perf(logic): watch two literals per clause in the DPLL solver
+#
+#   Replace the linear scan over every clause at each decision with the
+#   two watched literal scheme, which visits a clause only when one of
+#   its two watches is falsified. On the pigeonhole instances in the
+#   benchmark suite the change reduces propagation time by about eighty
+#   percent and leaves the returned models unchanged.
+#
+#   refactor(sets): move the closure algorithms onto the relation base
+#
+#   The reflexive, symmetric, and transitive closures were implemented
+#   separately in the relation, order, and equivalence modules, which had
+#   already drifted in their handling of an empty ground set. They now
+#   live once on RelationBase and the three modules delegate to it. No
+#   public interface changes.
+#
+#   docs(algebra): state the orbit stabilizer theorem in the action module
+#
+#   The module implemented the theorem without stating it, which left a
+#   reader to infer the invariant from the code. Add the statement, the
+#   complexity of the orbit computation, and a worked example over the
+#   symmetric group on four letters.
+#
+#   test(combinatorics): cross validate ranking against enumeration
+#
+#   Assert that unranking the index of every permutation of up to seven
+#   letters returns the original permutation, and that the ranks of the
+#   enumerated permutations are exactly the integers below the factorial.
+#   Together these pin the bijection in both directions.
+#
+#   build(deps): raise the minimum supported interpreter to 3.9
+#
+#   The typing constructs the library uses are unavailable on 3.8, which
+#   reached end of life. Drop it from the matrix, raise requires-python,
+#   and remove the two compatibility branches it required.
+#
+#   BREAKING CHANGE: Python 3.8 is no longer supported. Upgrade the
+#   interpreter, or pin discretus below this release.
+#
+#   ci(lint): reject long dash characters and emoji in the prose job
+#
+#   The repository writes prose with plain punctuation. Add a check that
+#   scans every text file and fails on a long dash or an emoji, so that
+#   the convention is enforced rather than remembered.
+#
+#   chore: remove the unused benchmark fixture directory
+#
+#   The directory has been empty since the benchmark suite moved to
+#   generated inputs, and it confused new contributors looking for the
+#   fixtures the old documentation mentioned.
+#
+#   revert: undo "perf(sets): cache the power set enumeration"
+#
+#   This reverts commit 0123456789abcdef, which cached the enumeration
+#   across calls and therefore held the whole power set in memory,
+#   defeating the lazy generator the module documents. The performance
+#   gain it reported came from measuring the cached second call.

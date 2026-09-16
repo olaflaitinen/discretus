@@ -1,0 +1,96 @@
+# ShellCheck configuration for the maintenance scripts in scripts/.
+#
+# Five shell scripts live in scripts/: the test runner, the lint runner, the
+# documentation builder, the version bump wrapper, and the release driver.
+# They are short, but two of them can publish an artifact or move a tag, so
+# a silent failure in one of them is expensive. Static analysis is therefore
+# treated as part of the quality gate rather than as a nicety.
+#
+# Everyday use:
+#
+#   shellcheck scripts/*.sh
+#   shellcheck --severity=style scripts/*.sh
+#   scripts/lint.sh                      # runs the same checks the gate runs
+#
+# ShellCheck reads this file from the directory of the analysed script and
+# from every parent directory, so a single copy at the repository root
+# covers scripts/ and any script added later, including one inside docs/ or
+# inside a container build context.
+
+# Every script declares `#!/usr/bin/env bash` and relies on bash features:
+# arrays for the interpreter matrix, `[[ ]]` for safe comparisons, and
+# `set -euo pipefail` at the top. Analysing them as portable POSIX shell
+# would produce a long list of findings that contradict the shebang.
+shell=bash
+
+# Optional checks that are off by default and are enabled here because each
+# one catches a class of defect that matters in release automation.
+#
+#   add-default-case
+#       A case statement without a fallback branch silently does nothing
+#       for an unmatched value. In the release script an unmatched
+#       subcommand must be an error, not a no operation.
+#
+#   avoid-nullary-conditions
+#       The form `[ $variable ]` is true for the string "0" and false for
+#       an empty string, which is almost never what the author meant.
+#       Requiring an explicit `-n` or `-z` removes the ambiguity.
+#
+#   check-extra-masked-returns
+#       A non zero status inside a pipeline or a command substitution is
+#       discarded unless it is read deliberately. That is exactly how a
+#       failed build step ends up publishing an incomplete artifact.
+#
+#   check-unassigned-uppercase
+#       An upper case variable that is never assigned is usually a typo in
+#       the name of an environment variable, which then expands to the
+#       empty string and produces a subtly wrong command line.
+#
+#   deprecate-which
+#       `which` is not a shell builtin, its exit status differs between
+#       systems, and it is absent from minimal container images. The
+#       portable replacement is `command -v`.
+#
+#   quote-safe-variables
+#       Quoting even the variables that cannot currently contain
+#       whitespace protects the script from a later edit that makes them
+#       able to, which is the usual way a word splitting defect appears.
+#
+#   require-variable-braces
+#       Writing ${name} rather than $name removes the ambiguity at a
+#       concatenation such as ${prefix}_suffix and reads consistently.
+enable=add-default-case,avoid-nullary-conditions,check-extra-masked-returns,check-unassigned-uppercase,deprecate-which,quote-safe-variables,require-variable-braces
+
+# Findings that are deliberately silenced, each with its reason. The list is
+# kept short on purpose: a long disable list is indistinguishable from not
+# running the linter at all.
+#
+#   SC1091
+#       The scripts source a virtual environment activation file that does
+#       not exist until the environment is created, so the linter cannot
+#       follow it and reports a missing source. The activation is guarded by
+#       a file existence test at runtime.
+#
+#   SC2312
+#       The release script reads command substitutions inside conditions on
+#       purpose, because a non zero status there is the signal it is
+#       testing for rather than an error to propagate.
+disable=SC1091,SC2312
+
+# Do not follow `source` into files outside the repository, so that the
+# analysis depends only on what is committed here and produces the same
+# result on a laptop, in a container, and in continuous integration.
+external-sources=false
+
+# Where to look for sourced files that do live in the repository. The
+# scripts share a small preamble, and this path lets the linter resolve it
+# without an absolute reference that would break outside the container.
+source-path=SCRIPTDIR
+source-path=SCRIPTDIR/..
+source-path=SCRIPTDIR/../scripts
+
+# The severity floor is a command line concern rather than a configuration
+# one. scripts/lint.sh passes `--severity=style` so that no finding is
+# skipped locally, and the lint workflow does the same, which means a style
+# level finding is visible in review even though .hadolint.yaml and the
+# Python linters keep their own thresholds.

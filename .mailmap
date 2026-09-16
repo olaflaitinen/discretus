@@ -1,0 +1,101 @@
+# Canonical contributor identities for discretus.
+#
+# Git reads this file to merge the several names and addresses one person may
+# have committed with into a single identity. It changes what the reporting
+# commands display and leaves the commit objects untouched, so editing this
+# file never rewrites history and never invalidates a clone, a tag, or a
+# signature.
+#
+# Commands that honour the mapping:
+#
+#   git shortlog --summary --numbered --email
+#   git log --author="Olaf"
+#   git log --format='%aN <%aE>'
+#   git blame --line-porcelain
+#   git check-mailmap "Some Name <some@address>"
+#
+# Commands that do not honour it, because they read the raw object:
+#
+#   git cat-file commit HEAD
+#   git log --format='%an <%ae>'          # lower case, raw author
+#
+# The distinction matters when auditing authorship. The upper case
+# placeholders %aN and %aE apply the mapping; the lower case %an and %ae
+# report what is actually stored in the commit.
+#
+# ---------------------------------------------------------------------------
+# Format
+# ---------------------------------------------------------------------------
+#
+# One mapping per line, in any of four forms:
+#
+#   Canonical Name <canonical@address>
+#       Fix the display name for every commit made with that address.
+#
+#   <canonical@address> <other@address>
+#       Fold a second address into the canonical one, keeping the name that
+#       each commit already carries.
+#
+#   Canonical Name <canonical@address> <other@address>
+#       Fold a second address into the canonical one and normalize the name
+#       at the same time. This is the form used most often.
+#
+#   Canonical Name <canonical@address> Old Name <other@address>
+#       Match on the old name as well, which is required when two people
+#       once shared an address, for example a shared laboratory account.
+#
+# Lines beginning with a hash are comments. Matching is case insensitive on
+# the address and exact on the name.
+#
+# ---------------------------------------------------------------------------
+# Policy
+# ---------------------------------------------------------------------------
+#
+# Add a line here rather than asking a contributor to rewrite their history.
+# A rewrite changes every commit hash from the edit onward, breaks the links
+# in issues and reviews that reference those hashes, and invalidates any
+# signature the contributor made, all in exchange for a cosmetic change that
+# this file achieves for free.
+#
+# The canonical address for the author is the forge account address, because
+# that is the address the forge links commits to when it builds a
+# contribution profile. Institutional and personal addresses are folded into
+# it. The institutional address remains the correspondence address and is
+# recorded in AUTHORS.md, CITATION.cff, codemeta.json, and the contact
+# section of the README, which are the places a reader looks for it.
+#
+# A contributor whose name appears incorrectly in the release statistics
+# should open a pull request that adds a line here. Such a change needs no
+# discussion and is merged as soon as it is verified with:
+#
+#   git check-mailmap "Reported Name <reported@address>"
+#
+# ---------------------------------------------------------------------------
+# Mappings
+# ---------------------------------------------------------------------------
+
+# Author and maintainer. The account address is canonical, and the
+# institutional address at the University of Eastern Finland is folded into
+# it so that the history reports one contributor rather than two.
+Olaf Yunus Laitinen Imanov <olaf.laitinen@gmail.com>
+Olaf Yunus Laitinen Imanov <olaf.laitinen@gmail.com> <yimanov@student.uef.fi>
+
+# Automated accounts. Listing them keeps the dependency and workflow update
+# commits from appearing as several distinct contributors in the release
+# statistics, and it makes the human contribution count meaningful.
+dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com> <support@dependabot.com>
+github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+
+# ---------------------------------------------------------------------------
+# Verification
+# ---------------------------------------------------------------------------
+#
+# After editing, confirm that the history collapses to the identities you
+# expect, and that no unintended address was folded in:
+#
+#   git shortlog --summary --numbered --email
+#   git log --format='%aN <%aE>' | sort -u
+#
+# The second command should print one line per real contributor plus one
+# line per automated account.

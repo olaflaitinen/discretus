@@ -1,0 +1,77 @@
+# Cloud development environment for discretus.
+#
+# The file lets a contributor open a ready to use workspace in a browser
+# without installing an interpreter locally, which lowers the barrier for a
+# first documentation fix or a small bug report reproduction. It mirrors the
+# local setup described in CONTRIBUTING.md, so a change that passes here
+# passes on a laptop as well.
+
+image: gitpod/workspace-python-3.12
+
+tasks:
+  # The first task prepares the environment. It runs once when the
+  # workspace is created and its result is reused by later starts.
+  - name: Install the library and the development stack
+    init: |
+      python -m pip install --upgrade pip
+      python -m pip install -e ".[dev,docs,viz]"
+      pre-commit install
+      pre-commit install --hook-type commit-msg
+      git config commit.template .gitmessage
+      echo "Environment ready. Run 'make test' to execute the suite."
+    command: |
+      python -c "import discretus; print('discretus', discretus.__version__)"
+
+  # The second task keeps a test run available in its own terminal, so that
+  # the feedback loop does not compete with the editor terminal.
+  - name: Test suite
+    openMode: split-right
+    command: |
+      echo "Run the suite with: make test"
+      echo "Run one package with: python -m pytest tests/graphs -q"
+      echo "Run with coverage with: make test-cov"
+
+  # The third task serves the documentation with live reload, which makes
+  # prose review immediate.
+  - name: Documentation preview
+    openMode: tab-after
+    command: |
+      echo "Build once with: make docs"
+      echo "Then open docs/_build/html/index.html from the explorer."
+
+ports:
+  # Port used by a local documentation server when a contributor starts one
+  # with python -m http.server inside docs/_build/html.
+  - port: 8000
+    name: Documentation
+    description: Locally served HTML documentation
+    onOpen: notify
+    visibility: private
+
+vscode:
+  extensions:
+    - ms-python.python
+    - ms-python.vscode-pylance
+    - ms-python.black-formatter
+    - ms-python.isort
+    - charliermarsh.ruff
+    - matangover.mypy
+    - njpwerner.autodocstring
+    - tamasfe.even-better-toml
+    - redhat.vscode-yaml
+    - davidanson.vscode-markdownlint
+    - streetsidesoftware.code-spell-checker
+    - eamodio.gitlens
+
+github:
+  prebuilds:
+    # Build the environment ahead of time for the default branch and for
+    # pull requests, so that a reviewer opens a workspace that is already
+    # installed rather than waiting for the install to finish.
+    master: true
+    branches: true
+    pullRequests: true
+    pullRequestsFromForks: true
+    addCheck: false
+    addComment: false
+    addBadge: false
