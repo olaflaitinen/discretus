@@ -107,7 +107,38 @@ target-version = "py39"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "C4", "SIM", "RET"]
-ignore = ["E501", "SIM108"]
+ignore = [
+    # The line length is enforced by the formatter, which knows how to
+    # break a line, where this rule can only complain about one.
+    "E501",
+    # A ternary expression is not always clearer than the branch it
+    # replaces, and this rule cannot tell the difference.
+    "SIM108",
+    # The five rules below would rewrite every annotation into the built in
+    # generic and union forms, that is List into list and Optional[T] into
+    # T or None. Both forms work here, because every module defers the
+    # evaluation of its annotations, so the choice is a convention rather
+    # than a constraint, and this project's convention is the explicit
+    # typing names for three reasons.
+    #
+    # The oldest supported interpreter is 3.9, where the built in forms are
+    # valid in an annotation and invalid anywhere the annotation is
+    # evaluated, for instance inside a cast or a type alias used at
+    # runtime. Allowing one form in some places and requiring another
+    # elsewhere is how a supported interpreter stops being supported.
+    #
+    # The reference is generated from these annotations, and the generated
+    # signatures have to match what the tutorials and the docstrings show.
+    #
+    # A mechanical rewrite of every annotation in the library would be a
+    # very large diff whose only effect is stylistic, and most of the fixes
+    # this rule offers are marked unsafe for the reason given above.
+    "UP006",
+    "UP007",
+    "UP035",
+    "UP037",
+    "UP045",
+]
 
 [tool.mypy]
 python_version = "3.9"
