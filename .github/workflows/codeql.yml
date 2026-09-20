@@ -79,7 +79,7 @@ jobs:
           python -m pip install -e .
 
       - name: Initialize the analysis
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
           # Both suites. The security queries are the point; the quality
@@ -99,10 +99,10 @@ jobs:
       - name: Autobuild
         # Python needs no build step. The action is kept because it also
         # discovers the module layout, which improves the analysis.
-        uses: github/codeql-action/autobuild@v3
+        uses: github/codeql-action/autobuild@v4
 
       - name: Perform the analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           category: "/language:${{ matrix.language }}"
           upload: always
