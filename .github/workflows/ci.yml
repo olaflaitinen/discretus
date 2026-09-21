@@ -216,7 +216,7 @@ jobs:
             --cov-report=term-missing:skip-covered
 
       - name: Upload the coverage report
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v7
         with:
           files: coverage.xml
           flags: unit
