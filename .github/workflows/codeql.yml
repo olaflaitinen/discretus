@@ -178,7 +178,7 @@ jobs:
         # known vulnerability is blocked, and a dependency under a licence
         # incompatible with the Mozilla Public License 2.0 is blocked,
         # because the project cannot redistribute it.
-        uses: actions/dependency-review-action@v4
+        uses: actions/dependency-review-action@v5
         with:
           fail-on-severity: moderate
           deny-licenses: GPL-2.0, GPL-3.0, AGPL-3.0, SSPL-1.0
